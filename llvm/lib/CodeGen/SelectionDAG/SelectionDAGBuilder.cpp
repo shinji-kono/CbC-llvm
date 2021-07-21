@@ -7545,6 +7545,16 @@ void SelectionDAGBuilder::LowerCallTo(const CallBase &CB, SDValue Callee,
       .setConvergent(CB.isConvergent())
       .setIsPreallocated(
           CB.countOperandBundlesOfType(LLVMContext::OB_preallocated) != 0);
+#ifndef noCbC
+  // if code segment's tail call flag was changed false , we report it on error.
+  if (RetTy->is__CodeTy() && !isTailCall ) {
+      if (CB.getCaller()->getReturnType()->is__CodeTy()) {
+          // LLVMContext &Ctx = *DAG.getContext();
+          //- Ctx.emitError(&CB, "tail call failed on __code");
+          errs() << "tail call failed on __code " + CB.getCaller()->getName() ;
+      }
+  }
+#endif
   std::pair<SDValue, SDValue> Result = lowerInvokable(CLI, EHPadBB);
 
   if (Result.first.getNode()) {

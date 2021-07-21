@@ -442,6 +442,9 @@ int FunctionComparator::cmpTypes(Type *TyL, Type *TyR) const {
   case Type::LabelTyID:
   case Type::MetadataTyID:
   case Type::TokenTyID:
+#ifndef noCbC
+  case Type::__CodeTyID:
+#endif
     return 0;
 
   case Type::PointerTyID:

@@ -572,6 +572,9 @@ static void EmitCleanup(CodeGenFunction &CGF,
   }
 
   // Ask the cleanup to emit itself.
+#ifndef noCbC
+  if (!CGF.FnRetTy.getTypePtr()->is__CodeType()) // in __code cleanup is done just before tail call (goto)
+#endif
   Fn->Emit(CGF, flags);
   assert(CGF.HaveInsertPoint() && "cleanup ended with no insertion point?");
 

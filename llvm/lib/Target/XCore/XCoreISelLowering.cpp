@@ -1883,7 +1883,11 @@ bool XCoreTargetLowering::isLegalAddressingMode(const DataLayout &DL,
                                                 const AddrMode &AM, Type *Ty,
                                                 unsigned AS,
                                                 Instruction *I) const {
+#ifndef noCbC
+  if (Ty->getTypeID() == Type::VoidTyID || Ty->getTypeID() == Type::__CodeTyID)
+#else
   if (Ty->getTypeID() == Type::VoidTyID)
+#endif
     return AM.Scale == 0 && isImmUs(AM.BaseOffs) && isImmUs4(AM.BaseOffs);
 
   unsigned Size = DL.getTypeAllocSize(Ty);

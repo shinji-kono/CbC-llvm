@@ -557,6 +557,12 @@ public:
     return Type::getVoidTy(Context);
   }
 
+#ifndef noCbC
+  Type *get__CodeTy() {
+    return Type::get__CodeTy(Context);
+  }
+#endif 
+  
   /// Fetch the type representing a pointer to an 8-bit integer value.
   PointerType *getInt8PtrTy(unsigned AddrSpace = 0) {
     return Type::getInt8PtrTy(Context, AddrSpace);

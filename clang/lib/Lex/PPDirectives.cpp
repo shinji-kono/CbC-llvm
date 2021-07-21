@@ -48,6 +48,9 @@
 #include <new>
 #include <string>
 #include <utility>
+#ifndef noCbC
+#include <string>
+#endif
 
 using namespace clang;
 
@@ -3283,3 +3286,59 @@ void Preprocessor::HandleElifFamilyDirective(Token &ElifToken,
       HashToken.getLocation(), CI.IfLoc, /*Foundnonskip*/ true,
       /*FoundElse*/ CI.FoundElse, ElifToken.getLocation());
 }
+
+#ifndef noCbC
+/// IncludeHeader - Include a header file.
+/// Current Token is saved for returning current file because it has been already lexed from buffer of input file.
+/// When the lexer has already entered a header file, this function return false.
+bool Preprocessor::IncludeHeader(Token Tok, const char* Name) {
+  if (SavedTokenFlag) // If the lexer has already entered a header file, we have to leave this function.
+    return false;
+  SourceLocation Loc = Tok.getLocation();
+  SavedToken = Tok;
+  SavedDepth = IncludeMacroStack.size();
+  SavedTokenFlag = true;
+
+  CurLexer->ParsingPreprocessorDirective = true;
+  if (CurLexer) CurLexer->SetKeepWhitespaceMode(false);
+  CurLexer->MIOpt.resetImmediatelyAfterTopLevelIfndef();
+  ++NumDirectives; // number of preprocessor directives.
+  const int Len = strlen(Name);
+  const DirectoryLookup *LookupFrom = 0;
+  Token FilenameTok;
+  FilenameTok.setKind(tok::string_literal);
+  FilenameTok.setLocation(Loc);
+  FilenameTok.setLength(Len);
+  FilenameTok.setLiteralData(Name);
+  StringRef Filename;
+  Filename = StringRef(Name, Len);
+  bool isAngled = true; // '<' header name '>'
+  const DirectoryLookup *CurDir;
+  bool IsMapped = false;
+  ModuleMap::KnownHeader SuggestedModule;
+  Optional <FileEntryRef> File = LookupFile(Loc, Filename, isAngled, LookupFrom, nullptr, CurDir, nullptr, nullptr,
+                                     &SuggestedModule, &IsMapped, nullptr);
+  if (!File) {
+    Diag(FilenameTok, diag::err_pp_file_not_found) << Filename; // setjmp.h was not found
+  }
+  SrcMgr::CharacteristicKind FileCharacter = std::max(HeaderInfo.getFileDirFlavor(&File->getFileEntry()), SourceMgr.getFileCharacteristic(Loc));
+
+  if (!HeaderInfo.ShouldEnterIncludeFile(*this, &File->getFileEntry(), false, false, SuggestedModule.getModule())) {
+    return false;
+  }
+
+  FileID FID = SourceMgr.createFileID(*File, Loc, FileCharacter);
+  EnterSourceFile(FID, CurDir, FilenameTok.getLocation());
+  return true;
+}
+
+void Preprocessor::ClearCache(){
+  CachedTokens.clear();
+  CachedLexPos = 0;
+}
+
+void Preprocessor::RestoreTokens(Token *Toks, unsigned NumToks){
+  EnterCachingLexMode();
+  CachedTokens.insert(CachedTokens.begin()+CachedLexPos, Toks, Toks + NumToks);
+}
+#endif

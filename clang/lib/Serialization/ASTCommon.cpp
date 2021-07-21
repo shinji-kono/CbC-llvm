@@ -256,6 +256,11 @@ serialization::TypeIdxFromBuiltin(const BuiltinType *BT) {
   case BuiltinType::OMPArraySection:
     ID = PREDEF_TYPE_OMP_ARRAY_SECTION;
     break;
+#ifndef noCbC
+  case BuiltinType::__Code:
+    ID = PREDEF_TYPE___CODE_ID;
+    break;
+#endif
   case BuiltinType::OMPArrayShaping:
     ID = PREDEF_TYPE_OMP_ARRAY_SHAPING;
     break;

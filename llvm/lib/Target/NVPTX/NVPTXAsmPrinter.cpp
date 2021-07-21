@@ -337,7 +337,11 @@ void NVPTXAsmPrinter::printReturnValStr(const Function *F, raw_ostream &O) {
 
   bool isABI = (STI.getSmVersion() >= 20);
 
+#ifndef noCbC
+  if (Ty->getTypeID() == Type::VoidTyID || Ty->getTypeID() == Type::__CodeTyID)
+#else
   if (Ty->getTypeID() == Type::VoidTyID)
+#endif
     return;
 
   O << " (";

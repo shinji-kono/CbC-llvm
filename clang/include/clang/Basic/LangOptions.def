@@ -391,6 +391,10 @@ LANGOPT(ForceEmitVTables, 1, 0, "whether to emit all vtables")
 BENIGN_LANGOPT(AllowEditorPlaceholders, 1, 0,
                "allow editor placeholders in source")
 
+#ifndef noCbC
+LANGOPT(HasCodeSegment          , 1, 0, "CbC")
+#endif
+
 ENUM_LANGOPT(ClangABICompat, ClangABI, 4, ClangABI::Latest,
              "version of Clang that we should attempt to be ABI-compatible "
              "with")

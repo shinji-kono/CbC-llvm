@@ -436,6 +436,9 @@ llvm::Type *CodeGenTypes::ConvertType(QualType T) {
   case Type::Builtin: {
     switch (cast<BuiltinType>(Ty)->getKind()) {
     case BuiltinType::Void:
+#ifndef noCbC
+    case BuiltinType::__Code:
+#endif
     case BuiltinType::ObjCId:
     case BuiltinType::ObjCClass:
     case BuiltinType::ObjCSel:

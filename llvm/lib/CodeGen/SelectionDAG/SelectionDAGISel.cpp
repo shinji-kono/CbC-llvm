@@ -1560,6 +1560,9 @@ void SelectionDAGISel::SelectAllBasicBlocks(const Function &Fn) {
           // If the call was emitted as a tail call, we're done with the block.
           // We also need to delete any previously emitted instructions.
           if (HadTailCall) {
+#ifndef noCbC
+            if (Fn.getReturnType()->is__CodeTy()) break;
+#endif // noCbC
             FastIS->removeDeadCode(SavedInsertPt, FuncInfo->MBB->end());
             --BI;
             break;

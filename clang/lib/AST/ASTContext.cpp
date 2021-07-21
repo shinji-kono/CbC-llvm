@@ -1279,6 +1279,11 @@ void ASTContext::InitBuiltinTypes(const TargetInfo &Target,
   // C99 6.2.5p19.
   InitBuiltinType(VoidTy,              BuiltinType::Void);
 
+#ifndef noCbC
+  // CbC
+  InitBuiltinType(__CodeTy,            BuiltinType::__Code);
+#endif
+
   // C99 6.2.5p2.
   InitBuiltinType(BoolTy,              BuiltinType::Bool);
   // C99 6.2.5p3.
@@ -2011,6 +2016,9 @@ TypeInfo ASTContext::getTypeInfoImpl(const Type *T) const {
     default: llvm_unreachable("Unknown builtin type!");
     case BuiltinType::Void:
       // GCC extension: alignof(void) = 8 bits.
+#ifndef noCbC
+    case BuiltinType::__Code:
+#endif
       Width = 0;
       Align = 8;
       break;
@@ -7229,6 +7237,9 @@ static char getObjCEncodingForPrimitiveType(const ASTContext *C,
     BuiltinType::Kind kind = BT->getKind();
     switch (kind) {
     case BuiltinType::Void:       return 'v';
+#ifndef noCbC
+    case BuiltinType::__Code:     return 'v';
+#endif
     case BuiltinType::Bool:       return 'B';
     case BuiltinType::Char8:
     case BuiltinType::Char_U:

@@ -320,7 +320,13 @@ void PassManagerBuilder::populateFunctionPassManager(
   if (EnableMatrix && OptLevel == 0)
     FPM.add(createLowerMatrixIntrinsicsMinimalPass());
 
+#ifndef noCbC
+  if (OptLevel == 0) {
+    FPM.add(createSROAPass(true));
+  }
+#else
   if (OptLevel == 0) return;
+#endif
 
   addInitialAliasAnalysisPasses(FPM);
 
@@ -328,7 +334,11 @@ void PassManagerBuilder::populateFunctionPassManager(
   // Compare/branch metadata may alter the behavior of passes like SimplifyCFG.
   FPM.add(createLowerExpectIntrinsicPass());
   FPM.add(createCFGSimplificationPass());
+#ifndef noCbC
+  FPM.add(createSROAPass(false));
+#else
   FPM.add(createSROAPass());
+#endif
   FPM.add(createEarlyCSEPass());
 }
 
@@ -390,7 +400,11 @@ void PassManagerBuilder::addFunctionSimplificationPasses(
   // Start of function pass.
   // Break up aggregate allocas, using SSAUpdater.
   assert(OptLevel >= 1 && "Calling function optimizer with no optimization level!");
+#ifndef noCbC
+  MPM.add(createSROAPass(false));
+#else
   MPM.add(createSROAPass());
+#endif
   MPM.add(createEarlyCSEPass(true /* Enable mem-ssa. */)); // Catch trivial redundancies
   if (EnableKnowledgeRetention)
     MPM.add(createAssumeSimplifyPass());
@@ -426,10 +440,14 @@ void PassManagerBuilder::addFunctionSimplificationPasses(
   // Optimize memory intrinsic calls based on the profiled size information.
   if (SizeLevel == 0)
     MPM.add(createPGOMemOPSizeOptLegacyPass());
-
+  
   // TODO: Investigate the cost/benefit of tail call elimination on debugging.
+#ifndef noCbC
+  MPM.add(createTailCallEliminationPass(false)); // CbC
+#else
   if (OptLevel > 1)
     MPM.add(createTailCallEliminationPass()); // Eliminate tail calls
+#endif
   MPM.add(createCFGSimplificationPass());      // Merge & remove BBs
   MPM.add(createReassociatePass());           // Reassociate expressions
 
@@ -681,6 +699,10 @@ void PassManagerBuilder::populateModulePassManager(
       MPM.add(createMergeFunctionsPass());
     else if (GlobalExtensionsNotEmpty() || !Extensions.empty())
       MPM.add(createBarrierNoopPass());
+
+#ifndef noCbC
+    MPM.add(createTailCallEliminationPass(true));   // Eliminate tail calls
+#endif
 
     if (PerformThinLTO) {
       MPM.add(createLowerTypeTestsPass(nullptr, nullptr, true));
@@ -1036,8 +1058,12 @@ void PassManagerBuilder::addLTOOptimizationPasses(legacy::PassManagerBase &PM) {
   PM.add(createWholeProgramDevirtPass(ExportSummary, nullptr));
 
   // That's all we need at opt level 1.
-  if (OptLevel == 1)
+  if (OptLevel == 1) {
+#ifndef noCbC
+    PM.add(createTailCallEliminationPass(false));
+#endif
     return;
+   }
 
   // Now that we internalized some globals, see if we can hack on them!
   PM.add(createGlobalOptimizerPass());
@@ -1100,8 +1126,12 @@ void PassManagerBuilder::addLTOOptimizationPasses(legacy::PassManagerBase &PM) {
 
   // LTO provides additional opportunities for tailcall elimination due to
   // link-time inlining, and visibility of nocapture attribute.
+#ifndef noCbC
+    PM.add(createTailCallEliminationPass(true));
+#else
   if (OptLevel > 1)
     PM.add(createTailCallEliminationPass());
+#endif
 
   // Infer attributes on declarations, call sites, arguments, etc.
   PM.add(createPostOrderFunctionAttrsLegacyPass()); // Add nocapture.

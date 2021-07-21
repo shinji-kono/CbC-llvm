@@ -274,8 +274,20 @@ Retry:
     break;
   case tok::kw_for:                 // C99 6.8.5.3: for-statement
     return ParseForStatement(TrailingElseLoc);
-
   case tok::kw_goto:                // C99 6.8.6.1: goto-statement
+#ifndef noCbC
+    {
+      Token Next = NextToken();
+      if (!(Next.is(tok::identifier) && PP.LookAhead(1).is(tok::semi)) && // C: 'goto' identifier ';'
+          Next.isNot(tok::star)) {                                        // C: 'goto' '*' expression ';'
+        SemiError = "goto code segment";
+        if(Next.is(tok::identifier) && NeedPrototypeDeclaration(Next)){ // Probably, direct continuation. goto csName();
+          CreatePrototypeDeclaration();
+        }
+        return ParseCbCGotoStatement(Attrs, Stmts);                              // CbC: goto codesegment statement
+      }
+    }
+#endif
     Res = ParseGotoStatement();
     SemiError = "goto";
     break;

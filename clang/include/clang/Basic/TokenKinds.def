@@ -330,6 +330,11 @@ KEYWORD(__func__                    , KEYALL)
 KEYWORD(__objc_yes                  , KEYALL)
 KEYWORD(__objc_no                   , KEYALL)
 
+#ifndef noCbC // CbC Keywords.
+KEYWORD(__code                      , KEYALL)
+KEYWORD(_CbC_return                    , KEYALL)
+KEYWORD(_CbC_environment               , KEYALL)
+#endif
 
 // C++ 2.11p1: Keywords.
 KEYWORD(asm                         , KEYCXX|KEYGNU)

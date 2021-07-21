@@ -1533,6 +1533,9 @@ bool CursorVisitor::VisitBuiltinTypeLoc(BuiltinTypeLoc TL) {
   switch (TL.getTypePtr()->getKind()) {
 
   case BuiltinType::Void:
+#ifndef noCbC
+  case BuiltinType::__Code:
+#endif
   case BuiltinType::NullPtr:
   case BuiltinType::Dependent:
 #define IMAGE_TYPE(ImgType, Id, SingletonId, Access, Suffix)                   \

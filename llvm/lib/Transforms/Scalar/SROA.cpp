@@ -4823,6 +4823,13 @@ public:
     initializeSROALegacyPassPass(*PassRegistry::getPassRegistry());
   }
 
+#ifndef noCbC
+  SROALegacyPass(bool forCbC) : FunctionPass(ID) {
+    onlyForCbC = forCbC;
+    initializeSROALegacyPassPass(*PassRegistry::getPassRegistry());
+  }
+#endif
+
   bool runOnFunction(Function &F) override {
     if (skipFunction(F))
       return false;
@@ -4840,12 +4847,21 @@ public:
     AU.setPreservesCFG();
   }
 
+#ifndef noCbC
+  bool onlyForCbC;
+  bool isOnlyForCbC() { return onlyForCbC; }
+#endif
+
   StringRef getPassName() const override { return "SROA"; }
 };
 
 char SROALegacyPass::ID = 0;
 
+#ifndef noCbC
+FunctionPass *llvm::createSROAPass(bool forCbC) { return new SROALegacyPass(forCbC); }
+#else
 FunctionPass *llvm::createSROAPass() { return new SROALegacyPass(); }
+#endif
 
 INITIALIZE_PASS_BEGIN(SROALegacyPass, "sroa",
                       "Scalar Replacement Of Aggregates", false, false)

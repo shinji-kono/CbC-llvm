@@ -636,6 +636,9 @@ llvm::DIType *CGDebugInfo::CreateType(const BuiltinType *BT) {
   case BuiltinType::NullPtr:
     return DBuilder.createNullPtrType();
   case BuiltinType::Void:
+#ifndef noCbC
+  case BuiltinType::__Code:
+#endif
     return nullptr;
   case BuiltinType::ObjCClass:
     if (!ClassTy)

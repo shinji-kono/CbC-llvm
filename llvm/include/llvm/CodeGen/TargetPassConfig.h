@@ -156,6 +156,9 @@ public:
   void setInitialized() { Initialized = true; }
 
   CodeGenOpt::Level getOptLevel() const;
+#ifndef noCbC
+  unsigned hasCodeSegment();
+#endif
 
   /// Returns true if one of the `-start-after`, `-start-before`, `-stop-after`
   /// or `-stop-before` options is set.

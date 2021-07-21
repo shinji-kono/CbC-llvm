@@ -73,6 +73,9 @@ static Interpreter *TheInterpreter;
 static char getTypeID(Type *Ty) {
   switch (Ty->getTypeID()) {
   case Type::VoidTyID:    return 'V';
+#ifndef noCbC
+  case Type::__CodeTyID:    return 'V';
+#endif
   case Type::IntegerTyID:
     switch (cast<IntegerType>(Ty)->getBitWidth()) {
       case 1:  return 'o';
@@ -123,6 +126,9 @@ static ExFunc lookupFunction(const Function *F) {
 static ffi_type *ffiTypeFor(Type *Ty) {
   switch (Ty->getTypeID()) {
     case Type::VoidTyID: return &ffi_type_void;
+#ifndef noCbC
+    case Type::__CodeTyID: return &ffi_type_void;
+#endif
     case Type::IntegerTyID:
       switch (cast<IntegerType>(Ty)->getBitWidth()) {
         case 8:  return &ffi_type_sint8;
@@ -232,7 +238,11 @@ static bool ffiInvoke(RawFunc Fn, Function *F, ArrayRef<GenericValue> ArgVals,
   if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, NumArgs, rtype, args.data()) ==
       FFI_OK) {
     SmallVector<uint8_t, 128> ret;
+#ifndef noCbC
+    if (RetTy->getTypeID() != Type::VoidTyID && RetTy->getTypeID() != Type::__CodeTyID)
+#else
     if (RetTy->getTypeID() != Type::VoidTyID)
+#endif
       ret.resize(TD.getTypeStoreSize(RetTy));
     ffi_call(&cif, Fn, ret.data(), values.data());
     switch (RetTy->getTypeID()) {

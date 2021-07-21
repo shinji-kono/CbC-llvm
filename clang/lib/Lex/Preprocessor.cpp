@@ -155,6 +155,11 @@ Preprocessor::Preprocessor(std::shared_ptr<PreprocessorOptions> PPOpts,
       !this->PPOpts->ImplicitPCHInclude.empty())
     SkippingUntilPCHThroughHeader = true;
 
+ #ifndef noCbC
+  SavedDepth = 0;
+  SavedTokenFlag = false;
+#endif 
+
   if (this->PPOpts->GeneratePreamble)
     PreambleConditionalStack.startRecording();
 
@@ -891,7 +896,11 @@ void Preprocessor::Lex(Token &Result) {
   do {
     switch (CurLexerKind) {
     case CLK_Lexer:
+#ifndef noCbC
+      ReturnedToken = CurLexer->Lex(Result, ProtoParsing);
+#else
       ReturnedToken = CurLexer->Lex(Result);
+#endif
       break;
     case CLK_TokenLexer:
       ReturnedToken = CurTokenLexer->Lex(Result);
@@ -1422,3 +1431,31 @@ void Preprocessor::createPreprocessingRecord() {
   Record = new PreprocessingRecord(getSourceManager());
   addPPCallbacks(std::unique_ptr<PPCallbacks>(Record));
 }
+
+#ifndef noCbC
+
+Token Preprocessor::ReadFromString(const char *src , SourceLocation Loc) {
+    // Push the ( "string" ) tokens into the token stream.
+    MacroInfo *MI = AllocateMacroInfo(Loc);
+    Token Tok;
+    std::unique_ptr<Lexer> lx(new Lexer(CurLexer->getFileID(),getSourceManager().getBufferOrFake(CurLexer->getFileID(), Loc),*this));
+    lx->InitLexer(src,src,src + strlen(src));
+    lx->Lex(Tok);
+    CurLexer.swap(lx);
+    int i = 0;
+    while (Tok.getKind() != tok::TokenKind::eof) {
+      Tok.setLocation(Loc);
+      MI->AddTokenToBody(Tok);
+      Lex(Tok); i++;
+    }
+    Tok.setLocation(Loc);
+    MI->AddTokenToBody(Tok); i++;
+    MI->DefinitionLength = i;
+    CurLexer = std::move(lx);
+    CurPPLexer = CurLexer.get();
+    EnterMacro(Tok, Loc, MI , 0 );
+    CurTokenLexer->MacroDefLength = i;
+    return Tok;
+}
+
+#endif

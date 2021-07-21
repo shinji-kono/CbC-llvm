@@ -299,6 +299,10 @@ public:
 #include "clang/Basic/OpenCLImageTypes.def"
   static const TST TST_error = clang::TST_error;
 
+#ifndef noCbC
+  static const TST TST___code = clang::TST___code;
+#endif
+
   // type-qualifiers
   enum TQ {   // NOTE: These flags must be kept in sync with Qualifiers::TQ.
     TQ_unspecified = 0,

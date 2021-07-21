@@ -1143,6 +1143,12 @@ ExprResult Parser::ParseCastExpression(CastParseKind ParseKind,
       }
     }
 
+#ifndef noCbC
+    if(NeedPrototypeDeclaration(Tok)){
+      CreatePrototypeDeclaration();
+    }
+#endif
+
     // Consume the identifier so that we can see if it is followed by a '(' or
     // '.'.
     IdentifierInfo &II = *Tok.getIdentifierInfo();
@@ -1732,6 +1738,14 @@ ExprResult Parser::ParseCastExpression(CastParseKind ParseKind,
                                    PreferredType.get(Tok.getLocation()));
     return ExprError();
   }
+#ifndef noCbC
+  case tok::kw__CbC_return:
+    Res = Prepare__retForGotoWithTheEnvExpr();
+    break;
+  case tok::kw__CbC_environment:
+    Res = Prepare__envForGotoWithTheEnvExpr();
+    break;
+#endif
   case tok::l_square:
     if (getLangOpts().CPlusPlus11) {
       if (getLangOpts().ObjC) {
@@ -3364,7 +3378,20 @@ bool Parser::ParseExpressionList(SmallVectorImpl<Expr *> &Exprs,
     if (getLangOpts().CPlusPlus11 && Tok.is(tok::l_brace)) {
       Diag(Tok, diag::warn_cxx98_compat_generalized_initializer_lists);
       Expr = ParseBraceInitializer();
-    } else
+    }
+#ifndef noCbC
+    else if (Tok.is(tok::kw__CbC_return)){
+      Expr = Prepare__retForGotoWithTheEnvExpr();
+    }
+    else if (Tok.is(tok::kw__CbC_environment)){
+      Expr = Prepare__envForGotoWithTheEnvExpr();
+    }
+    else if (Tok.is(tok::identifier) && NeedPrototypeDeclaration(Tok)){ // check code segment declaration.
+      CreatePrototypeDeclaration();
+      Expr = ParseAssignmentExpression();
+    }
+#endif
+    else
       Expr = ParseAssignmentExpression();
 
     if (Tok.is(tok::ellipsis))

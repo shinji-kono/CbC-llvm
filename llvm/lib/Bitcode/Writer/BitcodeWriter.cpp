@@ -921,6 +921,9 @@ void ModuleBitcodeWriter::writeTypeTable() {
 
     switch (T->getTypeID()) {
     case Type::VoidTyID:      Code = bitc::TYPE_CODE_VOID;      break;
+#ifndef noCbC
+    case Type::__CodeTyID:      Code = bitc::TYPE_CODE_VOID;      break;
+#endif
     case Type::HalfTyID:      Code = bitc::TYPE_CODE_HALF;      break;
     case Type::BFloatTyID:    Code = bitc::TYPE_CODE_BFLOAT;    break;
     case Type::FloatTyID:     Code = bitc::TYPE_CODE_FLOAT;     break;
@@ -1132,7 +1135,7 @@ static unsigned getEncodedComdatSelectionKind(const Comdat &C) {
     return bitc::COMDAT_SELECTION_KIND_EXACT_MATCH;
   case Comdat::Largest:
     return bitc::COMDAT_SELECTION_KIND_LARGEST;
-  case Comdat::NoDeduplicate:
+  case Comdat::NoDuplicates:
     return bitc::COMDAT_SELECTION_KIND_NO_DUPLICATES;
   case Comdat::SameSize:
     return bitc::COMDAT_SELECTION_KIND_SAME_SIZE;

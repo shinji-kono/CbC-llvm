@@ -843,6 +843,9 @@ SimplifiedTypeClass clang::getSimplifiedTypeClass(CanQualType T) {
   case Type::Builtin:
     switch (cast<BuiltinType>(T)->getKind()) {
     case BuiltinType::Void:
+#ifndef noCbC
+    case BuiltinType::__Code:
+#endif
       return STC_Void;
 
     case BuiltinType::NullPtr:

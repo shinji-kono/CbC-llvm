@@ -180,7 +180,11 @@ public:
 private:
   /// Lex - Return the next token in the file.  If this is the end of file, it
   /// return the tok::eof token.  This implicitly involves the preprocessor.
+#ifndef noCbC
+  bool Lex(Token &Result, bool ProtoParsing = false);
+#else
   bool Lex(Token &Result);
+#endif
 
 public:
   /// isPragmaLexer - Returns true if this Lexer is being used to lex a pragma.
@@ -569,7 +573,11 @@ private:
   /// LexTokenInternal - Internal interface to lex a preprocessing token. Called
   /// by Lex.
   ///
+#ifndef noCbC
+  bool LexTokenInternal(Token &Result, bool TokAtPhysicalStartOfLine, bool ignoreInclude = false);
+#else
   bool LexTokenInternal(Token &Result, bool TokAtPhysicalStartOfLine);
+#endif
 
   bool CheckUnicodeWhitespace(Token &Result, uint32_t C, const char *CurPtr);
 

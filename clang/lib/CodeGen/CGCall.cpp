@@ -760,6 +760,13 @@ CodeGenTypes::arrangeLLVMFunctionInfo(CanQualType resultType,
 
   unsigned CC = ClangCallConvToLLVMCallConv(info.getCC());
 
+#ifndef noCbC
+  // if the function is a code segment , set fastcall calling convention.
+  if(resultType.getTypePtr()->is__CodeType()){
+     CC = llvm::CallingConv::Fast;
+  }
+#endif
+
   // Construct the function info.  We co-allocate the ArgInfos.
   FI = CGFunctionInfo::create(CC, instanceMethod, chainCall, info,
                               paramInfos, resultType, argTypes, required);
@@ -1610,7 +1617,14 @@ CodeGenTypes::GetFunctionType(const CGFunctionInfo &FI) {
 
   case ABIArgInfo::Indirect:
   case ABIArgInfo::Ignore:
+#ifndef noCbC
+    if (FI.getReturnType().getTypePtr()->is__CodeType())
+      resultType = llvm::Type::get__CodeTy(getLLVMContext());
+    else
+      resultType = llvm::Type::getVoidTy(getLLVMContext());
+#else
     resultType = llvm::Type::getVoidTy(getLLVMContext());
+#endif
     break;
 
   case ABIArgInfo::CoerceAndExpand:
@@ -1783,6 +1797,11 @@ void CodeGenModule::getDefaultFunctionAttributes(StringRef Name,
       FpKind = "all";
       break;
     }
+#ifndef noCbC
+  if (getLangOpts().HasCodeSegment) {
+      FpKind = "none";
+  }
+#endif
     FuncAttrs.addAttribute("frame-pointer", FpKind);
 
     if (CodeGenOpts.LessPreciseFPMAD)
@@ -5081,6 +5100,12 @@ RValue CodeGenFunction::EmitCall(const CGFunctionInfo &CallInfo,
     IRCallArgs[IRFunctionArgs.getInallocaArgNo()] = Arg;
   }
 
+#ifndef noCbC
+/*
+    terminates local variable pointer life time here.
+    cf. CodeGenFunction::PopCleanupBlock at clang/lib/CodeGen/CGCleanup.cpp
+*/
+#endif
   // 2. Prepare the function pointer.
 
   // If the callee is a bitcast of a non-variadic function to have a
@@ -5299,6 +5324,12 @@ RValue CodeGenFunction::EmitCall(const CGFunctionInfo &CallInfo,
       Call->setTailCallKind(llvm::CallInst::TCK_NoTail);
     else if (IsMustTail)
       Call->setTailCallKind(llvm::CallInst::TCK_MustTail);
+#ifndef noCbC
+    if (! CallInfo.isVariadic() && ! IsMustTail) {
+      if (this->FnRetTy.getTypePtr()->is__CodeType() && CallInfo.getReturnType().getTypePtr()->is__CodeType())
+          Call->setTailCallKind(llvm::CallInst::TCK_Tail);
+    }
+#endif
   }
 
   // Add metadata for calls to MSAllocator functions

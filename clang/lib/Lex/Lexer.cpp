@@ -49,6 +49,10 @@
 
 using namespace clang;
 
+#ifndef noCbC
+#include <string.h>
+#endif
+
 //===----------------------------------------------------------------------===//
 // Token Class Implementation
 //===----------------------------------------------------------------------===//
@@ -3197,7 +3201,11 @@ void Lexer::PropagateLineStartLeadingSpaceInfo(Token &Result) {
   // Note that this doesn't affect IsAtPhysicalStartOfLine.
 }
 
+#ifndef noCbC
+bool Lexer::Lex(Token &Result, bool ProtoParsing) {
+#else
 bool Lexer::Lex(Token &Result) {
+#endif
   // Start a new token.
   Result.startToken();
 
@@ -3221,7 +3229,11 @@ bool Lexer::Lex(Token &Result) {
   IsAtPhysicalStartOfLine = false;
   bool isRawLex = isLexingRawMode();
   (void) isRawLex;
+#ifndef noCbC
+  bool returnedToken = LexTokenInternal(Result, atPhysicalStartOfLine, ProtoParsing);
+#else
   bool returnedToken = LexTokenInternal(Result, atPhysicalStartOfLine);
+#endif
   // (After the LexTokenInternal call, the lexer might be destroyed.)
   assert((returnedToken || !isRawLex) && "Raw lex must succeed");
   return returnedToken;
@@ -3232,7 +3244,11 @@ bool Lexer::Lex(Token &Result) {
 /// has a null character at the end of the file.  This returns a preprocessing
 /// token, not a normal token, as such, it is an internal interface.  It assumes
 /// that the Flags of result have been cleared before calling this.
+#ifndef noCbC
+bool Lexer::LexTokenInternal(Token &Result, bool TokAtPhysicalStartOfLine, bool ignoreInclude) {
+#else
 bool Lexer::LexTokenInternal(Token &Result, bool TokAtPhysicalStartOfLine) {
+#endif
 LexNextToken:
   // New token, can't need cleaning yet.
   Result.clearFlag(Token::NeedsCleaning);
@@ -3898,6 +3914,12 @@ LexNextToken:
     Kind = tok::comma;
     break;
   case '#':
+#ifndef noCbC
+    if (ignoreInclude && strncmp(CurPtr, "include", 7) == 0){
+      SkipLineComment(Result, CurPtr, TokAtPhysicalStartOfLine);
+      return true;
+    }
+#endif
     Char = getCharAndSize(CurPtr, SizeTmp);
     if (Char == '#') {
       Kind = tok::hashhash;

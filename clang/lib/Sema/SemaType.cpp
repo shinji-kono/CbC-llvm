@@ -1281,6 +1281,11 @@ static QualType ConvertDeclSpecToType(TypeProcessingState &state) {
   case DeclSpec::TST_void:
     Result = Context.VoidTy;
     break;
+#ifndef noCbC
+  case DeclSpec::TST___code:
+    Result = Context.__CodeTy;
+    break;
+#endif
   case DeclSpec::TST_char:
     if (DS.getTypeSpecSign() == TypeSpecifierSign::Unspecified)
       Result = Context.CharTy;
@@ -2821,6 +2826,7 @@ static void checkExtParameterInfos(Sema &S, ArrayRef<QualType> paramTypes,
 
     // SwiftAsyncContext is not limited to swiftasynccall functions.
     case ParameterABI::SwiftAsyncContext:
+      // FIXME: might want to require swiftasynccc when it exists
       continue;
 
     // swift_error parameters must be preceded by a swift_context parameter.

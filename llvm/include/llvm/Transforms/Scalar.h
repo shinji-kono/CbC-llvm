@@ -111,7 +111,11 @@ FunctionPass *createBitTrackingDCEPass();
 //
 // SROA - Replace aggregates or pieces of aggregates with scalar SSA values.
 //
+#ifndef noCbC
+FunctionPass *createSROAPass(bool isOnlyForCbC = false);
+#else
 FunctionPass *createSROAPass();
+#endif
 
 //===----------------------------------------------------------------------===//
 //
@@ -283,7 +287,11 @@ Pass *createStructurizeCFGPass(bool SkipUniformRegions = false);
 // TailCallElimination - This pass eliminates call instructions to the current
 // function which occur immediately before return instructions.
 //
+#ifndef noCbC
+FunctionPass *createTailCallEliminationPass(bool isOnlyForCbC);
+#else
 FunctionPass *createTailCallEliminationPass();
+#endif
 
 //===----------------------------------------------------------------------===//
 //

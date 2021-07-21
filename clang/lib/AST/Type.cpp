@@ -2938,6 +2938,10 @@ StringRef BuiltinType::getName(const PrintingPolicy &Policy) const {
   switch (getKind()) {
   case Void:
     return "void";
+#ifndef noCbC
+  case __Code:
+    return "__code";
+#endif
   case Bool:
     return Policy.Bool ? "bool" : "_Bool";
   case Char_S:
@@ -4103,6 +4107,9 @@ bool Type::canHaveNullability(bool ResultIfUnknown) const {
       return ResultIfUnknown;
 
     case BuiltinType::Void:
+#ifndef noCbC
+    case BuiltinType::__Code:
+#endif
     case BuiltinType::ObjCId:
     case BuiltinType::ObjCClass:
     case BuiltinType::ObjCSel:

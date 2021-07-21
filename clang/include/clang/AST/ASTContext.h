@@ -1043,6 +1043,9 @@ public:
 
   // Builtin Types.
   CanQualType VoidTy;
+#ifndef noCbC
+  CanQualType __CodeTy;
+#endif
   CanQualType BoolTy;
   CanQualType CharTy;
   CanQualType WCharTy;  // [C++ 3.9.1p5].

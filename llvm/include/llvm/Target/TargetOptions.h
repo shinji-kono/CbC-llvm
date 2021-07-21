@@ -353,6 +353,9 @@ namespace llvm {
     /// via the llvm.fma.* intrinsic) will always be honored, regardless of
     /// the value of this option.
     FPOpFusion::FPOpFusionMode AllowFPOpFusion = FPOpFusion::Standard;
+#ifndef noCbC
+    unsigned HasCodeSegment : 1;
+#endif
 
     /// ThreadModel - This flag specifies the type of threading model to assume
     /// for things like atomics

@@ -523,6 +523,9 @@ MVT MVT::getVT(Type *Ty, bool HandleUnknown){
     if (HandleUnknown) return MVT(MVT::Other);
     llvm_unreachable("Unknown type!");
   case Type::VoidTyID:
+#ifndef noCbC
+  case Type::__CodeTyID:
+#endif
     return MVT::isVoid;
   case Type::IntegerTyID:
     return getIntegerVT(cast<IntegerType>(Ty)->getBitWidth());

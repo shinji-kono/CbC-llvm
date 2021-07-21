@@ -2385,6 +2385,17 @@ public:
   /// warnings.
   void markMacroAsUsed(MacroInfo *MI);
 
+#ifndef noCbC
+  bool IncludeHeader(Token Tok, const char* Name);
+  Token ReadFromString(const char *src , SourceLocation Loc) ;
+  unsigned int SavedDepth;
+  Token SavedToken;
+  bool SavedTokenFlag;
+  void ClearCache();
+  void RestoreTokens(Token *Toks, unsigned NumToks);
+  bool ProtoParsing = false;
+#endif
+
 private:
   Optional<unsigned>
   getSkippedRangeForExcludedConditionalBlock(SourceLocation HashLoc);

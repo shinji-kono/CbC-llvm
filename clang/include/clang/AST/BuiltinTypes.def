@@ -57,6 +57,10 @@
 // void
 BUILTIN_TYPE(Void, VoidTy)
 
+#ifndef noCbC
+BUILTIN_TYPE(__Code, __CodeTy)
+#endif
+
 //===- Unsigned Types -----------------------------------------------------===//
 
 // 'bool' in C++, '_Bool' in C99

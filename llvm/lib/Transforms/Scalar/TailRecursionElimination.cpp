@@ -191,6 +191,28 @@ struct AllocaDerivedValueTracker {
 };
 }
 
+#ifndef noCbC
+static bool markTailToCodeSegments(Function &F){
+  bool Modified = false;
+  for (Function::iterator BB = F.begin(), E = F.end(); BB != E; ++BB) {
+    for (auto &I : *BB) {
+      CallInst *CI = dyn_cast<CallInst>(&I);
+      Function* Called;
+      if (CI)
+        Called = CI->getCalledFunction();
+      else
+        continue;
+      // We should touch only code segment call.
+      if (Called && Called->getReturnType()->is__CodeTy()) {
+        CI->setTailCall();
+        Modified = true;
+      }
+    }
+  }
+  return Modified;
+}
+#endif
+
 static bool markTails(Function &F, OptimizationRemarkEmitter *ORE) {
   if (F.callsFunctionThatReturnsTwice())
     return false;
@@ -208,6 +230,11 @@ static bool markTails(Function &F, OptimizationRemarkEmitter *ORE) {
   }
 
   bool Modified = false;
+
+#ifndef noCbC
+  if (F.getReturnType()->is__CodeTy())
+    Modified = markTailToCodeSegments(F);
+#endif
 
   // Track whether a block is reachable after an alloca has escaped. Blocks that
   // contain the escaping instruction will be marked as being visited without an
@@ -878,6 +905,13 @@ struct TailCallElim : public FunctionPass {
     initializeTailCallElimPass(*PassRegistry::getPassRegistry());
   }
 
+#ifndef noCbC
+  TailCallElim(bool f) : FunctionPass(ID) {
+    initializeTailCallElimPass(*PassRegistry::getPassRegistry());
+    onlyForCbC = f;
+  }
+#endif
+
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<TargetTransformInfoWrapperPass>();
     AU.addRequired<AAResultsWrapperPass>();
@@ -905,6 +939,12 @@ struct TailCallElim : public FunctionPass {
         &getAnalysis<AAResultsWrapperPass>().getAAResults(),
         &getAnalysis<OptimizationRemarkEmitterWrapperPass>().getORE(), DTU);
   }
+#ifndef noCbC
+  private:
+    bool onlyForCbC;
+  public:
+    bool isOnlyForCbC();
+#endif
 };
 }
 
@@ -917,9 +957,16 @@ INITIALIZE_PASS_END(TailCallElim, "tailcallelim", "Tail Call Elimination",
                     false, false)
 
 // Public interface to the TailCallElimination pass
+#ifndef noCbC
+// Public interface to the TailCallElimination pass
+FunctionPass *llvm::createTailCallEliminationPass(bool isOnlyForCbC) {
+  return new TailCallElim(isOnlyForCbC);
+}
+#else
 FunctionPass *llvm::createTailCallEliminationPass() {
   return new TailCallElim();
 }
+#endif
 
 PreservedAnalyses TailCallElimPass::run(Function &F,
                                         FunctionAnalysisManager &AM) {
@@ -942,3 +989,9 @@ PreservedAnalyses TailCallElimPass::run(Function &F,
   PA.preserve<PostDominatorTreeAnalysis>();
   return PA;
 }
+
+#ifndef noCbC
+bool TailCallElim::isOnlyForCbC(){
+   return onlyForCbC;
+}
+#endif

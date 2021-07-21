@@ -68,6 +68,9 @@ Parser::Parser(Preprocessor &pp, Sema &actions, bool skipFunctionBodies)
   PP.addCommentHandler(CommentSemaHandler.get());
 
   PP.setCodeCompletionHandler(*this);
+#ifndef noCbC
+  UniqueId = 0; // for CreateUniqueIdentifier()
+#endif
 }
 
 DiagnosticBuilder Parser::Diag(SourceLocation Loc, unsigned DiagID) {
@@ -610,6 +613,10 @@ bool Parser::ParseTopLevelDecl(DeclGroupPtrTy &Result, bool IsFirstDecl) {
   // processing
   if (PP.isIncrementalProcessingEnabled() && Tok.is(tok::eof))
     ConsumeToken();
+
+#ifndef noCbC
+    CheckTheSjHeader();
+#endif
 
   Result = nullptr;
   switch (Tok.getKind()) {
@@ -1374,6 +1381,12 @@ Decl *Parser::ParseFunctionDefinition(ParsingDeclarator &D,
   if (LateParsedAttrs)
     ParseLexedAttributeList(*LateParsedAttrs, Res, false, true);
 
+#ifndef noCbC
+  curFuncName = "__cbc_";
+  if (D.getIdentifier()) {
+      curFuncName = D.getIdentifier()->getName().data();
+  }
+#endif
   return ParseFunctionStatementBody(Res, BodyScope);
 }
 

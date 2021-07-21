@@ -493,6 +493,9 @@ LLVMContextRef LLVMGetModuleContext(LLVMModuleRef M) {
 LLVMTypeKind LLVMGetTypeKind(LLVMTypeRef Ty) {
   switch (unwrap(Ty)->getTypeID()) {
   case Type::VoidTyID:
+#ifndef noCbC
+  case Type::__CodeTyID:
+#endif
     return LLVMVoidTypeKind;
   case Type::HalfTyID:
     return LLVMHalfTypeKind;

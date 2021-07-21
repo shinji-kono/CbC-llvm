@@ -1638,6 +1638,9 @@ Parser::isCXXDeclarationSpecifier(Parser::TPResult BracedCastResult,
   case tok::kw__Float16:
   case tok::kw___float128:
   case tok::kw_void:
+#ifndef noCbC
+  case tok::kw___code:
+#endif
   case tok::annot_decltype:
 #define GENERIC_IMAGE_TYPE(ImgType, Id) case tok::kw_##ImgType##_t:
 #include "clang/Basic/OpenCLImageTypes.def"
@@ -1753,6 +1756,9 @@ bool Parser::isCXXDeclarationSpecifierAType() {
   case tok::kw___float128:
   case tok::kw_void:
   case tok::kw___unknown_anytype:
+#ifndef noCbC
+  case tok::kw___code:
+#endif
   case tok::kw___auto_type:
 #define GENERIC_IMAGE_TYPE(ImgType, Id) case tok::kw_##ImgType##_t:
 #include "clang/Basic/OpenCLImageTypes.def"

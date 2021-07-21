@@ -503,6 +503,11 @@ bool llvm::isInTailCallPosition(const CallBase &Call, const TargetMachine &TM) {
   const Instruction *Term = ExitBB->getTerminator();
   const ReturnInst *Ret = dyn_cast<ReturnInst>(Term);
 
+#ifndef noCbC
+  if (Call.getType()->is__CodeTy()) 
+      return true;
+#endif 
+
   // The block must end in a return statement or unreachable.
   //
   // FIXME: Decline tailcall if it's not guaranteed and if the block ends in

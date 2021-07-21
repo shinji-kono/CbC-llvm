@@ -659,6 +659,9 @@ void USRGenerator::VisitType(QualType T) {
       unsigned char c = '\0';
       switch (BT->getKind()) {
         case BuiltinType::Void:
+#ifndef noCbC
+        case BuiltinType::__Code:
+#endif
           c = 'v'; break;
         case BuiltinType::Bool:
           c = 'b'; break;

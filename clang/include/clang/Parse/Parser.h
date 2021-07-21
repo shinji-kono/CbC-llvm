@@ -2049,6 +2049,13 @@ private:
   /// A SmallVector of types.
   typedef SmallVector<ParsedType, 12> TypeVector;
 
+#ifndef noCbC // for CbC
+  StmtVector* Stmtsp;
+  const char* curFuncName;
+  unsigned int UniqueId;
+  bool ProtoParsing = false;
+#endif
+
   StmtResult
   ParseStatement(SourceLocation *TrailingElseLoc = nullptr,
                  ParsedStmtContext StmtCtx = ParsedStmtContext::SubStmt);
@@ -2084,6 +2091,10 @@ private:
   StmtResult ParseDoStatement();
   StmtResult ParseForStatement(SourceLocation *TrailingElseLoc);
   StmtResult ParseGotoStatement();
+#ifndef noCbC
+  StmtResult ParseCbCGotoStatement(ParsedAttributesWithRange &Attrs,StmtVector &Stmts);
+  void CompileFromString(const char *str, StmtVector &CompoundStmts);
+#endif
   StmtResult ParseContinueStatement();
   StmtResult ParseBreakStatement();
   StmtResult ParseReturnStatement();
@@ -2361,6 +2372,34 @@ private:
   void ParseStructDeclaration(
       ParsingDeclSpec &DS,
       llvm::function_ref<void(ParsingFieldDeclarator &)> FieldsCallback);
+#ifndef noCbC
+  void CreateRetCS(IdentifierInfo* csName);
+  void Create__CbC_envStruct(SourceLocation Loc, AccessSpecifier AS);
+  IdentifierInfo* CreateIdentifierInfo(const char* Name, SourceLocation Loc);
+  IdentifierInfo* CreateAnonIdentifierInfo(const char* Name, SourceLocation Loc);
+  Decl* Create__CbC_envBody(Decl* TagDecl, DeclSpec::TST T, SourceLocation Loc, const char* Name);
+  ExprResult LookupNameAndBuildExpr(IdentifierInfo *II = 0, bool IsAddressOfOperand = false);
+  ExprResult LookupMemberAndBuildExpr(IdentifierInfo *II, Expr* Base, bool IsArrow);
+  StmtResult CreateSjForContinuationWithTheEnv();
+  StmtResult CreateAssignmentStmt(IdentifierInfo* LHSII = 0, IdentifierInfo* RHSII = 0, bool LHSisMemberAccess = false,
+                                  bool RHShasAmp = false, IdentifierInfo* extraLHSII = 0, IdentifierInfo* extraRHSII = 0);
+  StmtResult CreateDeclStmt(IdentifierInfo *II = 0, bool isRetCS = false, bool copyType = false, int array = 0, DeclSpec::TST valueType = DeclSpec::TST_int, IdentifierInfo* Name = 0, DeclSpec::TQ TQ = DeclSpec::TQ_unspecified);
+  IdentifierInfo* CreateUniqueIdentifierInfo(const char* Name, SourceLocation Loc);
+  ParmVarDecl* CreateParam(IdentifierInfo *II = 0, int pointerNum = 0, DeclSpec::TST T = DeclSpec::TST_int);
+  Decl* HandleDeclAndChangeDeclType(Declarator &D);
+  void setTST(DeclSpec *DS = 0, DeclSpec::TST T = DeclSpec::TST_int, IdentifierInfo *Name = 0, DeclSpec::TQ TQ = DeclSpec::TQ_unspecified);
+  void CheckTheSjHeader();
+  ExprResult IIToExpr(IdentifierInfo *II, tok::TokenKind Kind);
+  ExprResult AnonToExpr(IdentifierInfo *II, tok::TokenKind Kind);
+  StmtResult CreateComplexStmtRet(IdentifierInfo *II, bool IsAddressOfOperand);
+  ExprResult Prepare__retForGotoWithTheEnvExpr();
+  ExprResult Prepare__envForGotoWithTheEnvExpr();
+  bool isVoidFunction();
+  bool SearchCodeSegmentDeclaration(std::string Name);
+  void CreatePrototypeDeclaration();
+  bool SkipAnyUntil(tok::TokenKind T, SkipUntilFlags Flags = static_cast<SkipUntilFlags>(0));
+  bool NeedPrototypeDeclaration(Token IITok);
+#endif
 
   bool isDeclarationSpecifier(bool DisambiguatingWithExpression = false);
   bool isTypeSpecifierQualifier();

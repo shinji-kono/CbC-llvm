@@ -537,7 +537,13 @@ PassBuilder::buildO1FunctionSimplificationPipeline(OptimizationLevel Level,
 
   // Form SSA out of local memory accesses after breaking apart aggregates into
   // scalars.
+#ifndef noCbC
   FPM.addPass(SROA());
+  FPM.addPass(TailCallElimPass());
+#else
+  if (Level.getSpeedupLevel() > 1)
+    FPM.addPass(TailCallElimPass());
+#endif
 
   // Catch trivial redundancies
   FPM.addPass(EarlyCSEPass(true /* Enable mem-ssa. */));
@@ -921,6 +927,9 @@ void PassBuilder::addPGOInstrPasses(ModulePassManager &MPM,
   FPM.addPass(createFunctionToLoopPassAdaptor(
       LoopRotatePass(Level != OptimizationLevel::Oz), EnableMSSALoopDependency,
       /*UseBlockFrequencyInfo=*/false));
+#ifndef noCbC
+  FPM.addPass(TailCallElimPass());
+#endif
   MPM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM)));
 
   // Add the profile lowering pass.

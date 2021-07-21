@@ -3822,6 +3822,15 @@ void Parser::ParseDeclarationSpecifiers(DeclSpec &DS,
       isInvalid = DS.SetTypeSpecType(DeclSpec::TST_void, Loc, PrevSpec,
                                      DiagID, Policy);
       break;
+#ifndef noCbC
+    case tok::kw___code: {
+      LangOptions* LOP;
+      LOP = const_cast<LangOptions*>(&getLangOpts());
+      LOP->HasCodeSegment = 1;
+      isInvalid = DS.SetTypeSpecType(DeclSpec::TST___code, Loc, PrevSpec, DiagID, Policy);
+      break;
+    }
+#endif
     case tok::kw_char:
       isInvalid = DS.SetTypeSpecType(DeclSpec::TST_char, Loc, PrevSpec,
                                      DiagID, Policy);
@@ -4949,6 +4958,9 @@ bool Parser::isKnownToBeTypeSpecifier(const Token &Tok) const {
   case tok::kw__Complex:
   case tok::kw__Imaginary:
   case tok::kw_void:
+#ifndef noCbC
+  case tok::kw___code:
+#endif
   case tok::kw_char:
   case tok::kw_wchar_t:
   case tok::kw_char8_t:
@@ -5030,6 +5042,9 @@ bool Parser::isTypeSpecifierQualifier() {
   case tok::kw__Complex:
   case tok::kw__Imaginary:
   case tok::kw_void:
+#ifndef noCbC
+  case tok::kw___code:
+#endif
   case tok::kw_char:
   case tok::kw_wchar_t:
   case tok::kw_char8_t:
@@ -5197,6 +5212,9 @@ bool Parser::isDeclarationSpecifier(bool DisambiguatingWithExpression) {
   case tok::kw__Complex:
   case tok::kw__Imaginary:
   case tok::kw_void:
+#ifndef noCbC
+  case tok::kw___code:
+#endif
   case tok::kw_char:
   case tok::kw_wchar_t:
   case tok::kw_char8_t:
@@ -7338,6 +7356,9 @@ bool Parser::TryAltiVecVectorTokenOutOfLine() {
   case tok::kw_signed:
   case tok::kw_unsigned:
   case tok::kw_void:
+#ifndef noCbC
+  case tok::kw___code:
+#endif
   case tok::kw_char:
   case tok::kw_int:
   case tok::kw_float:
@@ -7374,6 +7395,9 @@ bool Parser::TryAltiVecTokenOutOfLine(DeclSpec &DS, SourceLocation Loc,
     case tok::kw_signed:
     case tok::kw_unsigned:
     case tok::kw_void:
+#ifndef noCbC
+  case tok::kw___code:
+#endif
     case tok::kw_char:
     case tok::kw_int:
     case tok::kw_float:

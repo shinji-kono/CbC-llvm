@@ -2872,6 +2872,9 @@ void CXXNameMangler::mangleType(const BuiltinType *T) {
   std::string type_name;
   switch (T->getKind()) {
   case BuiltinType::Void:
+#ifndef noCbC
+  case BuiltinType::__Code:
+#endif
     Out << 'v';
     break;
   case BuiltinType::Bool:

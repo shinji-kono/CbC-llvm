@@ -1255,7 +1255,11 @@ std::string NVPTXTargetLowering::getPrototype(
   std::stringstream O;
   O << "prototype_" << UniqueCallSite << " : .callprototype ";
 
+#ifndef noCbC
+  if (retTy->getTypeID() == Type::VoidTyID || retTy->getTypeID() == Type::__CodeTyID) {
+#else
   if (retTy->getTypeID() == Type::VoidTyID) {
+#endif
     O << "()";
   } else {
     O << "(";

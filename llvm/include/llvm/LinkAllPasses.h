@@ -172,7 +172,11 @@ namespace {
       (void) llvm::createStripNonDebugSymbolsPass();
       (void) llvm::createStripDeadDebugInfoPass();
       (void) llvm::createStripDeadPrototypesPass();
+#ifndef noCbC
+      (void) llvm::createTailCallEliminationPass(false);
+#else
       (void) llvm::createTailCallEliminationPass();
+#endif
       (void) llvm::createJumpThreadingPass();
       (void) llvm::createUnifyFunctionExitNodesPass();
       (void) llvm::createInstCountPass();

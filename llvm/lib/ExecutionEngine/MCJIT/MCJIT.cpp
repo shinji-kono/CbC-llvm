@@ -590,6 +590,9 @@ GenericValue MCJIT::runFunction(Function *F, ArrayRef<GenericValue> ArgValues) {
       return rv;
     }
     case Type::VoidTyID:
+#ifndef noCbC
+    case Type::__CodeTyID:
+#endif
       rv.IntVal = APInt(32, ((int(*)())(intptr_t)FPtr)());
       return rv;
     case Type::FloatTyID:

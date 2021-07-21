@@ -2006,6 +2006,10 @@ public:
   bool isFundamentalType() const;
   bool isCompoundType() const;
 
+#ifndef noCbC
+  bool is__CodeType() const;         // for CbC
+#endif
+
   // Type Predicates: Check to see if this type is structurally the specified
   // type, ignoring typedefs and qualifiers.
   bool isFunctionType() const;
@@ -6956,8 +6960,20 @@ inline bool Type::isNonOverloadPlaceholderType() const {
 }
 
 inline bool Type::isVoidType() const {
+#ifndef noCbC
+  if (dyn_cast<BuiltinType>(CanonicalType))
+    return isSpecificBuiltinType(BuiltinType::Void) || isSpecificBuiltinType(BuiltinType::__Code);
+#endif
   return isSpecificBuiltinType(BuiltinType::Void);
 }
+
+#ifndef noCbC
+inline bool Type::is__CodeType() const {
+  if (dyn_cast<BuiltinType>(CanonicalType))
+    return isSpecificBuiltinType(BuiltinType::__Code);
+  return false;
+}
+#endif
 
 inline bool Type::isHalfType() const {
   // FIXME: Should we allow complex __fp16? Probably not.
@@ -7040,8 +7056,14 @@ inline bool Type::isUnsignedFixedPointType() const {
 
 inline bool Type::isScalarType() const {
   if (const auto *BT = dyn_cast<BuiltinType>(CanonicalType))
+#ifndef noCbC
+    return BT->getKind() > BuiltinType::Void &&
+           BT->getKind() <= BuiltinType::NullPtr &&
+           BT->getKind() != BuiltinType::__Code;
+#else
     return BT->getKind() > BuiltinType::Void &&
            BT->getKind() <= BuiltinType::NullPtr;
+#endif
   if (const EnumType *ET = dyn_cast<EnumType>(CanonicalType))
     // Enums are scalar types, but only if they are defined.  Incomplete enums
     // are not treated as scalar types.

@@ -423,6 +423,9 @@ ArgType::matchesType(ASTContext &C, QualType argTy) const {
           case BuiltinType::UChar:
           case BuiltinType::Char_S:
           case BuiltinType::SChar:
+#ifndef noCbC
+          case BuiltinType::__Code:
+#endif
             return Match;
           default:
             break;

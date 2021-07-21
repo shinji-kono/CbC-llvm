@@ -1063,6 +1063,10 @@ enum PredefinedTypeIDs {
 
   /// \brief The '__bf16' type
   PREDEF_TYPE_BFLOAT16_ID = 73,
+#ifndef noCbC
+  /// \brief The __code type.
+  PREDEF_TYPE___CODE_ID       = 81,
+#endif
 
 /// OpenCL image types with auto numeration
 #define IMAGE_TYPE(ImgType, Id, SingletonId, Access, Suffix)                   \

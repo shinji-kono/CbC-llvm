@@ -2805,7 +2805,11 @@ void X86_64ABIInfo::classify(QualType Ty, uint64_t OffsetBase,
   if (const BuiltinType *BT = Ty->getAs<BuiltinType>()) {
     BuiltinType::Kind k = BT->getKind();
 
+#ifndef noCbC
+    if (k == BuiltinType::Void || k == BuiltinType::__Code) {
+#else
     if (k == BuiltinType::Void) {
+#endif
       Current = NoClass;
     } else if (k == BuiltinType::Int128 || k == BuiltinType::UInt128) {
       Lo = Integer;

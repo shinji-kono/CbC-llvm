@@ -534,6 +534,9 @@ void TypePrinting::incorporateTypes() {
 void TypePrinting::print(Type *Ty, raw_ostream &OS) {
   switch (Ty->getTypeID()) {
   case Type::VoidTyID:      OS << "void"; return;
+#ifndef noCbC
+  case Type::__CodeTyID:      OS << "void"; return;
+#endif
   case Type::HalfTyID:      OS << "half"; return;
   case Type::BFloatTyID:    OS << "bfloat"; return;
   case Type::FloatTyID:     OS << "float"; return;

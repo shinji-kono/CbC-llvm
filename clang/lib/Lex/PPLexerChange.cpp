@@ -471,6 +471,25 @@ bool Preprocessor::HandleEndOfFile(Token &Result, bool isEndOfMacro) {
                              PPCallbacks::ExitFile, FileType, ExitedFID);
     }
 
+#ifndef noCbC
+    if (SavedTokenFlag && IncludeMacroStack.size() == SavedDepth){  // dead code?
+      Result = SavedToken;
+      SavedTokenFlag = false;
+      if (CurLexer->ParsingPreprocessorDirective) {
+          // Done parsing the "line".
+          CurLexer->ParsingPreprocessorDirective = false;
+
+          // Restore comment saving mode, in case it was disabled for directive.
+          CurLexer->resetExtendedTokenMode();
+
+          // Since we consumed a newline, we are back at the start of a line.
+          CurLexer->IsAtStartOfLine = true;
+          CurLexer->IsAtPhysicalStartOfLine = true;
+      }
+      return true;
+    }
+#endif
+    
     // Restore conditional stack from the preamble right after exiting from the
     // predefines file.
     if (ExitedFromPredefinesFile)

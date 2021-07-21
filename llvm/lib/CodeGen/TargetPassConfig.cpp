@@ -599,6 +599,12 @@ CodeGenOpt::Level TargetPassConfig::getOptLevel() const {
   return TM->getOptLevel();
 }
 
+#ifndef noCbC
+unsigned TargetPassConfig::hasCodeSegment() {
+    return TM->Options.HasCodeSegment;
+}
+#endif
+
 /// Insert InsertedPassID pass after TargetPassID.
 void TargetPassConfig::insertPass(AnalysisID TargetPassID,
                                   IdentifyingPassPtr InsertedPassID,
@@ -937,7 +943,9 @@ void TargetPassConfig::addPassesToHandleExceptions() {
 /// Add pass to prepare the LLVM IR for code generation. This should be done
 /// before exception handling preparation passes.
 void TargetPassConfig::addCodeGenPrepare() {
+#ifdef noCbC
   if (getOptLevel() != CodeGenOpt::None && !DisableCGP)
+#endif
     addPass(createCodeGenPreparePass());
 }
 

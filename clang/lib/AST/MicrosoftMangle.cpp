@@ -2304,6 +2304,9 @@ void MicrosoftCXXNameMangler::mangleType(const BuiltinType *T, Qualifiers,
   //                 ::= _Z # __float80 (Digital Mars)
   switch (T->getKind()) {
   case BuiltinType::Void:
+#ifndef noCbC
+  case BuiltinType::__Code:
+#endif
     Out << 'X';
     break;
   case BuiltinType::SChar:

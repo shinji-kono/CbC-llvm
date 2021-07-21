@@ -589,6 +589,10 @@ static bool initTargetOptions(DiagnosticsEngine &Diags,
   Options.MCOptions.Dwarf64 = CodeGenOpts.Dwarf64;
   Options.MCOptions.PreserveAsmComments = CodeGenOpts.PreserveAsmComments;
   Options.MCOptions.ABIName = TargetOpts.ABI;
+#ifndef noCbC
+  Options.HasCodeSegment = LangOpts.HasCodeSegment;
+  Options.GuaranteedTailCallOpt = LangOpts.HasCodeSegment;
+#endif
   for (const auto &Entry : HSOpts.UserEntries)
     if (!Entry.IsFramework &&
         (Entry.Group == frontend::IncludeDirGroup::Quoted ||

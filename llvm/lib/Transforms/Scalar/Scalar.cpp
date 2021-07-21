@@ -255,7 +255,11 @@ void LLVMAddSimplifyLibCallsPass(LLVMPassManagerRef PM) {
 }
 
 void LLVMAddTailCallEliminationPass(LLVMPassManagerRef PM) {
+#ifndef noCbC
+  unwrap(PM)->add(createTailCallEliminationPass(false));
+#else
   unwrap(PM)->add(createTailCallEliminationPass());
+#endif
 }
 
 void LLVMAddDemoteMemoryToRegisterPass(LLVMPassManagerRef PM) {

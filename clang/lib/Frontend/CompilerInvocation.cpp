@@ -2728,6 +2728,9 @@ static bool ParseFrontendArgs(FrontendOptions &Opts, ArgList &Args,
                 .Case("objective-c", Language::ObjC)
                 .Case("objective-c++", Language::ObjCXX)
                 .Case("renderscript", Language::RenderScript)
+#ifndef noCbC
+                .Case("cbc", Language::C)
+#endif
                 .Default(Language::Unknown);
 
     // "objc[++]-cpp-output" is an acceptable synonym for

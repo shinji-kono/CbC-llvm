@@ -68,6 +68,9 @@ public:
     TokenTyID,     ///< Tokens
 
     // Derived types... see DerivedTypes.h file.
+#ifndef noCbC
+    __CodeTyID,      ///< CbC Code Gear type 
+#endif
     IntegerTyID,       ///< Arbitrary bit width integers
     FunctionTyID,      ///< Functions
     PointerTyID,       ///< Pointers
@@ -134,8 +137,14 @@ public:
   /// elements defined above.
   TypeID getTypeID() const { return ID; }
 
+#ifndef noCbC
+  bool isVoidTy() const { return (getTypeID() == VoidTyID || getTypeID() == __CodeTyID); }
+  /// is__CodeTy - Return true if this is '__code'.
+  bool is__CodeTy() const { return getTypeID() == __CodeTyID; }
+#else
   /// Return true if this is 'void'.
   bool isVoidTy() const { return getTypeID() == VoidTyID; }
+#endif
 
   /// Return true if this is 'half', a 16-bit IEEE fp type.
   bool isHalfTy() const { return getTypeID() == HalfTyID; }
@@ -251,7 +260,11 @@ public:
   /// Return true if the type is "first class", meaning it is a valid type for a
   /// Value.
   bool isFirstClassType() const {
+#ifndef noCbC
+    return getTypeID() != FunctionTyID && getTypeID() != VoidTyID && getTypeID() != __CodeTyID;
+#else
     return getTypeID() != FunctionTyID && getTypeID() != VoidTyID;
+#endif
   }
 
   /// Return true if the type is a valid type for a register in codegen. This
@@ -422,6 +435,9 @@ public:
   static Type *getX86_MMXTy(LLVMContext &C);
   static Type *getX86_AMXTy(LLVMContext &C);
   static Type *getTokenTy(LLVMContext &C);
+#ifndef noCbC
+  static Type *get__CodeTy(LLVMContext &C); // for CbC project
+#endif
   static IntegerType *getIntNTy(LLVMContext &C, unsigned N);
   static IntegerType *getInt1Ty(LLVMContext &C);
   static IntegerType *getInt8Ty(LLVMContext &C);

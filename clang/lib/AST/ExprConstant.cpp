@@ -10961,6 +10961,9 @@ EvaluateBuiltinClassifyType(QualType T, const LangOptions &LangOpts) {
     case BuiltinType::ID: break;
 #include "clang/AST/BuiltinTypes.def"
     case BuiltinType::Void:
+#ifndef noCbC
+    case BuiltinType::__Code:
+#endif
       return GCCTypeClass::Void;
 
     case BuiltinType::Bool:
