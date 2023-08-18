@@ -1,4 +1,6 @@
-# RUN: yaml2obj %s | obj2yaml | FileCheck %s
+# RUN: yaml2obj %s -o=%t
+# RUN: obj2yaml %t | FileCheck %s
+# RUN: llvm-objdump --macho --exports-trie %t | FileCheck %s --check-prefix=OBJDUMP-VERIFY
 
 --- !mach-o
 FileHeader:      
@@ -96,7 +98,7 @@ LoadCommands:
   - cmd:             LC_LOAD_DYLINKER
     cmdsize:         32
     name:            12
-    PayloadString:   /usr/lib/dyld
+    Content:         /usr/lib/dyld
     ZeroPadBytes:    7
   - cmd:             LC_UUID
     cmdsize:         24
@@ -119,7 +121,7 @@ LoadCommands:
       timestamp:       2
       current_version: 7864576
       compatibility_version: 65536
-    PayloadString:   '/usr/lib/libc++.1.dylib'
+    Content:         '/usr/lib/libc++.1.dylib'
     ZeroPadBytes:    1
   - cmd:             LC_LOAD_DYLIB
     cmdsize:         56
@@ -128,7 +130,7 @@ LoadCommands:
       timestamp:       2
       current_version: 80349697
       compatibility_version: 65536
-    PayloadString:   /usr/lib/libSystem.B.dylib
+    Content:         /usr/lib/libSystem.B.dylib
     ZeroPadBytes:    6
   - cmd:             LC_FUNCTION_STARTS
     cmdsize:         16
@@ -167,7 +169,7 @@ LinkEditData:
             NodeOffset:      37
             Name:            main
             Flags:           0x0000000000000000
-            Address:         0x0000000000001160
+            Address:         0x0000000000003FA0
             Other:           0x0000000000000000
             ImportName:      ''
 ...
@@ -188,4 +190,8 @@ LinkEditData:
 #CHECK:           - TerminalSize:    3
 #CHECK:             NodeOffset:      37
 #CHECK:             Name:            main
-#CHECK:             Address:         0x1160
+#CHECK:             Address:         0x3FA0
+
+# OBJDUMP-VERIFY: Exports trie:
+# OBJDUMP-VERIFY: 0x100000000  __mh_execute_header
+# OBJDUMP-VERIFY: 0x100003FA0  _main

@@ -16,7 +16,6 @@
 #include "clang/Basic/MacroBuilder.h"
 #include "clang/Basic/TargetBuiltins.h"
 #include "llvm/ADT/StringSwitch.h"
-#include "llvm/Frontend/OpenMP/OMPGridValues.h"
 
 using namespace clang;
 using namespace clang::targets;
@@ -42,31 +41,20 @@ NVPTXTargetInfo::NVPTXTargetInfo(const llvm::Triple &Triple,
 
   PTXVersion = 32;
   for (const StringRef Feature : Opts.FeaturesAsWritten) {
-    if (!Feature.startswith("+ptx"))
+    int PTXV;
+    if (!Feature.startswith("+ptx") ||
+        Feature.drop_front(4).getAsInteger(10, PTXV))
       continue;
-    PTXVersion = llvm::StringSwitch<unsigned>(Feature)
-                     .Case("+ptx72", 72)
-                     .Case("+ptx71", 71)
-                     .Case("+ptx70", 70)
-                     .Case("+ptx65", 65)
-                     .Case("+ptx64", 64)
-                     .Case("+ptx63", 63)
-                     .Case("+ptx61", 61)
-                     .Case("+ptx60", 60)
-                     .Case("+ptx50", 50)
-                     .Case("+ptx43", 43)
-                     .Case("+ptx42", 42)
-                     .Case("+ptx41", 41)
-                     .Case("+ptx40", 40)
-                     .Case("+ptx32", 32)
-                     .Default(32);
+    PTXVersion = PTXV; // TODO: should it be max(PTXVersion, PTXV)?
   }
 
   TLSSupported = false;
   VLASupported = false;
   AddrSpaceMap = &NVPTXAddrSpaceMap;
-  GridValues = llvm::omp::NVPTXGpuGridValues;
   UseAddrSpaceMapMangling = true;
+  // __bf16 is always available as a load/store only type.
+  BFloat16Width = BFloat16Align = 16;
+  BFloat16Format = &llvm::APFloat::BFloat();
 
   // Define available target features
   // These must be defined in sorted order!
@@ -178,7 +166,7 @@ void NVPTXTargetInfo::getTargetDefines(const LangOptions &Opts,
                                        MacroBuilder &Builder) const {
   Builder.defineMacro("__PTX__");
   Builder.defineMacro("__NVPTX__");
-  if (Opts.CUDAIsDevice) {
+  if (Opts.CUDAIsDevice || Opts.OpenMPIsDevice) {
     // Set __CUDA_ARCH__ for the GPU specified.
     std::string CUDAArchCode = [this] {
       switch (GPU) {
@@ -204,6 +192,7 @@ void NVPTXTargetInfo::getTargetDefines(const LangOptions &Opts,
       case CudaArch::GFX909:
       case CudaArch::GFX90a:
       case CudaArch::GFX90c:
+      case CudaArch::GFX940:
       case CudaArch::GFX1010:
       case CudaArch::GFX1011:
       case CudaArch::GFX1012:
@@ -214,6 +203,12 @@ void NVPTXTargetInfo::getTargetDefines(const LangOptions &Opts,
       case CudaArch::GFX1033:
       case CudaArch::GFX1034:
       case CudaArch::GFX1035:
+      case CudaArch::GFX1036:
+      case CudaArch::GFX1100:
+      case CudaArch::GFX1101:
+      case CudaArch::GFX1102:
+      case CudaArch::GFX1103:
+      case CudaArch::Generic:
       case CudaArch::LAST:
         break;
       case CudaArch::UNUSED:
@@ -254,6 +249,12 @@ void NVPTXTargetInfo::getTargetDefines(const LangOptions &Opts,
         return "800";
       case CudaArch::SM_86:
         return "860";
+      case CudaArch::SM_87:
+        return "870";
+      case CudaArch::SM_89:
+        return "890";
+      case CudaArch::SM_90:
+        return "900";
       }
       llvm_unreachable("unhandled CudaArch");
     }();

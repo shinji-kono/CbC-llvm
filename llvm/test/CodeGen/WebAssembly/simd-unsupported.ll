@@ -10,7 +10,7 @@ target triple = "wasm32-unknown-unknown"
 ; ==============================================================================
 
 ; CHECK-LABEL: ctlz_v16i8:
-; CHECK: i32.clz
+; CHECK: i8x16.popcnt
 declare <16 x i8> @llvm.ctlz.v16i8(<16 x i8>, i1)
 define <16 x i8> @ctlz_v16i8(<16 x i8> %x) {
   %v = call <16 x i8> @llvm.ctlz.v16i8(<16 x i8> %x, i1 false)
@@ -18,14 +18,14 @@ define <16 x i8> @ctlz_v16i8(<16 x i8> %x) {
 }
 
 ; CHECK-LABEL: ctlz_v16i8_undef:
-; CHECK: i32.clz
+; CHECK: i8x16.popcnt
 define <16 x i8> @ctlz_v16i8_undef(<16 x i8> %x) {
   %v = call <16 x i8> @llvm.ctlz.v16i8(<16 x i8> %x, i1 true)
   ret <16 x i8> %v
 }
 
 ; CHECK-LABEL: cttz_v16i8:
-; CHECK: i32.ctz
+; CHECK: i8x16.popcnt
 declare <16 x i8> @llvm.cttz.v16i8(<16 x i8>, i1)
 define <16 x i8> @cttz_v16i8(<16 x i8> %x) {
   %v = call <16 x i8> @llvm.cttz.v16i8(<16 x i8> %x, i1 false)
@@ -33,18 +33,9 @@ define <16 x i8> @cttz_v16i8(<16 x i8> %x) {
 }
 
 ; CHECK-LABEL: cttz_v16i8_undef:
-; CHECK: i32.ctz
+; CHECK: i8x16.popcnt
 define <16 x i8> @cttz_v16i8_undef(<16 x i8> %x) {
   %v = call <16 x i8> @llvm.cttz.v16i8(<16 x i8> %x, i1 true)
-  ret <16 x i8> %v
-}
-
-; CHECK-LABEL: ctpop_v16i8:
-; Note: expansion does not use i32.popcnt
-; CHECK: v128.and
-declare <16 x i8> @llvm.ctpop.v16i8(<16 x i8>)
-define <16 x i8> @ctpop_v16i8(<16 x i8> %x) {
-  %v = call <16 x i8> @llvm.ctpop.v16i8(<16 x i8> %x)
   ret <16 x i8> %v
 }
 
@@ -129,8 +120,7 @@ define <8 x i16> @cttz_v8i16_undef(<8 x i16> %x) {
 }
 
 ; CHECK-LABEL: ctpop_v8i16:
-; Note: expansion does not use i32.popcnt
-; CHECK: v128.and
+; CHECK: i32.popcnt
 declare <8 x i16> @llvm.ctpop.v8i16(<8 x i16>)
 define <8 x i16> @ctpop_v8i16(<8 x i16> %x) {
   %v = call <8 x i16> @llvm.ctpop.v8i16(<8 x i16> %x)
@@ -218,8 +208,7 @@ define <4 x i32> @cttz_v4i32_undef(<4 x i32> %x) {
 }
 
 ; CHECK-LABEL: ctpop_v4i32:
-; Note: expansion does not use i32.popcnt
-; CHECK: v128.and
+; CHECK: i32.popcnt
 declare <4 x i32> @llvm.ctpop.v4i32(<4 x i32>)
 define <4 x i32> @ctpop_v4i32(<4 x i32> %x) {
   %v = call <4 x i32> @llvm.ctpop.v4i32(<4 x i32> %x)
@@ -307,8 +296,7 @@ define <2 x i64> @cttz_v2i64_undef(<2 x i64> %x) {
 }
 
 ; CHECK-LABEL: ctpop_v2i64:
-; Note: expansion does not use i64.popcnt
-; CHECK: v128.and
+; CHECK: i64.popcnt
 declare <2 x i64> @llvm.ctpop.v2i64(<2 x i64>)
 define <2 x i64> @ctpop_v2i64(<2 x i64> %x) {
   %v = call <2 x i64> @llvm.ctpop.v2i64(<2 x i64> %x)

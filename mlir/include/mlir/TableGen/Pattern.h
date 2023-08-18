@@ -18,6 +18,7 @@
 #include "mlir/TableGen/Argument.h"
 #include "mlir/TableGen/Operator.h"
 #include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/Hashing.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/ADT/StringSet.h"
 
@@ -27,7 +28,7 @@ namespace llvm {
 class DagInit;
 class Init;
 class Record;
-} // end namespace llvm
+} // namespace llvm
 
 namespace mlir {
 namespace tblgen {
@@ -100,6 +101,11 @@ public:
   // Precondition: isNativeCodeCall()
   StringRef getNativeCodeTemplate() const;
 
+  // Returns the number of values will be returned by the native helper
+  // function.
+  // Precondition: isNativeCodeCall()
+  int getNumReturnsOfNativeCode() const;
+
   // Returns the string associated with the leaf.
   // Precondition: isStringAttr()
   std::string getStringAttr() const;
@@ -107,6 +113,9 @@ public:
   void print(raw_ostream &os) const;
 
 private:
+  friend llvm::DenseMapInfo<DagLeaf>;
+  const void *getAsOpaquePointer() const { return def; }
+
   // Returns true if the TableGen Init `def` in this DagLeaf is a DefInit and
   // also a subclass of the given `superclass`.
   bool isSubClassOf(StringRef superclass) const;
@@ -171,8 +180,14 @@ public:
   // Returns whether this DAG represents the location of an op creation.
   bool isLocationDirective() const;
 
+  // Returns whether this DAG is a return type specifier.
+  bool isReturnTypeDirective() const;
+
   // Returns true if this DAG node is wrapping native code call.
   bool isNativeCodeCall() const;
+
+  // Returns whether this DAG is an `either` specifier.
+  bool isEither() const;
 
   // Returns true if this DAG node is an operation.
   bool isOperation() const;
@@ -181,10 +196,16 @@ public:
   // Precondition: isNativeCodeCall()
   StringRef getNativeCodeTemplate() const;
 
+  // Returns the number of values will be returned by the native helper
+  // function.
+  // Precondition: isNativeCodeCall()
+  int getNumReturnsOfNativeCode() const;
+
   void print(raw_ostream &os) const;
 
 private:
   friend class SymbolInfoMap;
+  friend llvm::DenseMapInfo<DagNode>;
   const void *getAsOpaquePointer() const { return node; }
 
   const llvm::DagInit *node; // nullptr means null DagNode
@@ -224,14 +245,21 @@ private:
 // values in a suitable way.
 class SymbolInfoMap {
 public:
-  explicit SymbolInfoMap(ArrayRef<llvm::SMLoc> loc) : loc(loc) {}
+  explicit SymbolInfoMap(ArrayRef<SMLoc> loc) : loc(loc) {}
 
   // Class for information regarding a symbol.
   class SymbolInfo {
   public:
+    // Returns a type string of a variable.
+    std::string getVarTypeStr(StringRef name) const;
+
     // Returns a string for defining a variable named as `name` to store the
     // value bound by this symbol.
     std::string getVarDecl(StringRef name) const;
+
+    // Returns a string for defining an argument which passes the reference of
+    // the variable.
+    std::string getArgDecl(StringRef name) const;
 
     // Returns a variable name for the symbol named as `name`.
     std::string getVarName(StringRef name) const;
@@ -242,36 +270,42 @@ public:
 
     // DagNode and DagLeaf are accessed by value which means it can't be used as
     // identifier here. Use an opaque pointer type instead.
-    using DagAndIndex = std::pair<const void *, int>;
+    using DagAndConstant = std::pair<const void *, int>;
 
     // What kind of entity this symbol represents:
     // * Attr: op attribute
     // * Operand: op operand
     // * Result: op result
     // * Value: a value not attached to an op (e.g., from NativeCodeCall)
-    enum class Kind : uint8_t { Attr, Operand, Result, Value };
+    // * MultipleValues: a pack of values not attached to an op (e.g., from
+    //   NativeCodeCall). This kind supports indexing.
+    enum class Kind : uint8_t { Attr, Operand, Result, Value, MultipleValues };
 
-    // Creates a SymbolInfo instance. `dagAndIndex` is only used for `Attr` and
-    // `Operand` so should be llvm::None for `Result` and `Value` kind.
+    // Creates a SymbolInfo instance. `dagAndConstant` is only used for `Attr`
+    // and `Operand` so should be llvm::None for `Result` and `Value` kind.
     SymbolInfo(const Operator *op, Kind kind,
-               Optional<DagAndIndex> dagAndIndex);
+               Optional<DagAndConstant> dagAndConstant);
 
     // Static methods for creating SymbolInfo.
     static SymbolInfo getAttr(const Operator *op, int index) {
-      return SymbolInfo(op, Kind::Attr, DagAndIndex(nullptr, index));
+      return SymbolInfo(op, Kind::Attr, DagAndConstant(nullptr, index));
     }
     static SymbolInfo getAttr() {
       return SymbolInfo(nullptr, Kind::Attr, llvm::None);
     }
     static SymbolInfo getOperand(DagNode node, const Operator *op, int index) {
       return SymbolInfo(op, Kind::Operand,
-                        DagAndIndex(node.getAsOpaquePointer(), index));
+                        DagAndConstant(node.getAsOpaquePointer(), index));
     }
     static SymbolInfo getResult(const Operator *op) {
       return SymbolInfo(op, Kind::Result, llvm::None);
     }
     static SymbolInfo getValue() {
       return SymbolInfo(nullptr, Kind::Value, llvm::None);
+    }
+    static SymbolInfo getMultipleValues(int numValues) {
+      return SymbolInfo(nullptr, Kind::MultipleValues,
+                        DagAndConstant(nullptr, numValues));
     }
 
     // Returns the number of static values this symbol corresponds to.
@@ -298,13 +332,21 @@ public:
     std::string getAllRangeUse(StringRef name, int index, const char *fmt,
                                const char *separator) const;
 
+    // The argument index (for `Attr` and `Operand` only)
+    int getArgIndex() const { return (*dagAndConstant).second; }
+
+    // The number of values in the MultipleValue
+    int getSize() const { return (*dagAndConstant).second; }
+
     const Operator *op; // The op where the bound entity belongs
     Kind kind;          // The kind of the bound entity
-    // The pair of DagNode pointer and argument index (for `Attr` and `Operand`
-    // only). Note that operands may be bound to the same symbol, use the
-    // DagNode and index to distinguish them. For `Attr`, the Dag part will be
-    // nullptr.
-    Optional<DagAndIndex> dagAndIndex;
+
+    // The pair of DagNode pointer and constant value (for `Attr`, `Operand` and
+    // the size of MultipleValue symbol). Note that operands may be bound to the
+    // same symbol, use the DagNode and index to distinguish them. For `Attr`
+    // and MultipleValue, the Dag part will be nullptr.
+    Optional<DagAndConstant> dagAndConstant;
+
     // Alternative name for the symbol. It is used in case the name
     // is not unique. Applicable for `Operand` only.
     Optional<std::string> alternativeName;
@@ -331,9 +373,16 @@ public:
   // `symbol` is already bound.
   bool bindOpResult(StringRef symbol, const Operator &op);
 
-  // Registers the given `symbol` as bound to a value. Returns false if `symbol`
-  // is already bound.
+  // A helper function for dispatching target value binding functions.
+  bool bindValues(StringRef symbol, int numValues = 1);
+
+  // Registers the given `symbol` as bound to the Value(s). Returns false if
+  // `symbol` is already bound.
   bool bindValue(StringRef symbol);
+
+  // Registers the given `symbol` as bound to a MultipleValue. Return false if
+  // `symbol` is already bound.
+  bool bindMultipleValues(StringRef symbol, int numValues);
 
   // Registers the given `symbol` as bound to an attr. Returns false if `symbol`
   // is already bound.
@@ -349,6 +398,8 @@ public:
   // with index `argIndex` for operator `op`.
   const_iterator findBoundSymbol(StringRef key, DagNode node,
                                  const Operator &op, int argIndex) const;
+  const_iterator findBoundSymbol(StringRef key,
+                                 const SymbolInfo &symbolInfo) const;
 
   // Returns the bounds of a range that includes all the elements which
   // bind to the `key`.
@@ -394,7 +445,7 @@ private:
 
   // Pattern instantiation location. This is intended to be used as parameter
   // to PrintFatalError() to report errors.
-  ArrayRef<llvm::SMLoc> loc;
+  ArrayRef<SMLoc> loc;
 };
 
 // Wrapper class providing helper methods for accessing MLIR Pattern defined
@@ -440,14 +491,14 @@ public:
   // pair).
   std::vector<IdentifierLine> getLocation() const;
 
-private:
-  // Helper function to verify variabld binding.
-  void verifyBind(bool result, StringRef symbolName);
-
   // Recursively collects all bound symbols inside the DAG tree rooted
   // at `tree` and updates the given `infoMap`.
   void collectBoundSymbols(DagNode tree, SymbolInfoMap &infoMap,
                            bool isSrcPattern);
+
+private:
+  // Helper function to verify variable binding.
+  void verifyBind(bool result, StringRef symbolName);
 
   // The TableGen definition of this pattern.
   const llvm::Record &def;
@@ -458,7 +509,45 @@ private:
   RecordOperatorMap *recordOpMap;
 };
 
-} // end namespace tblgen
-} // end namespace mlir
+} // namespace tblgen
+} // namespace mlir
+
+namespace llvm {
+template <>
+struct DenseMapInfo<mlir::tblgen::DagNode> {
+  static mlir::tblgen::DagNode getEmptyKey() {
+    return mlir::tblgen::DagNode(
+        llvm::DenseMapInfo<llvm::DagInit *>::getEmptyKey());
+  }
+  static mlir::tblgen::DagNode getTombstoneKey() {
+    return mlir::tblgen::DagNode(
+        llvm::DenseMapInfo<llvm::DagInit *>::getTombstoneKey());
+  }
+  static unsigned getHashValue(mlir::tblgen::DagNode node) {
+    return llvm::hash_value(node.getAsOpaquePointer());
+  }
+  static bool isEqual(mlir::tblgen::DagNode lhs, mlir::tblgen::DagNode rhs) {
+    return lhs.node == rhs.node;
+  }
+};
+
+template <>
+struct DenseMapInfo<mlir::tblgen::DagLeaf> {
+  static mlir::tblgen::DagLeaf getEmptyKey() {
+    return mlir::tblgen::DagLeaf(
+        llvm::DenseMapInfo<llvm::Init *>::getEmptyKey());
+  }
+  static mlir::tblgen::DagLeaf getTombstoneKey() {
+    return mlir::tblgen::DagLeaf(
+        llvm::DenseMapInfo<llvm::Init *>::getTombstoneKey());
+  }
+  static unsigned getHashValue(mlir::tblgen::DagLeaf leaf) {
+    return llvm::hash_value(leaf.getAsOpaquePointer());
+  }
+  static bool isEqual(mlir::tblgen::DagLeaf lhs, mlir::tblgen::DagLeaf rhs) {
+    return lhs.def == rhs.def;
+  }
+};
+} // namespace llvm
 
 #endif // MLIR_TABLEGEN_PATTERN_H_

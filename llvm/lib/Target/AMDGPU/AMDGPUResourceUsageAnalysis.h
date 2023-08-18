@@ -17,7 +17,6 @@
 
 #include "llvm/Analysis/CallGraphSCCPass.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
-#include "llvm/IR/ValueMap.h"
 
 namespace llvm {
 
@@ -25,7 +24,7 @@ class GCNSubtarget;
 class MachineFunction;
 class TargetMachine;
 
-struct AMDGPUResourceUsageAnalysis : public CallGraphSCCPass {
+struct AMDGPUResourceUsageAnalysis : public ModulePass {
   static char ID;
 
 public:
@@ -44,12 +43,21 @@ public:
     bool HasIndirectCall = false;
 
     int32_t getTotalNumSGPRs(const GCNSubtarget &ST) const;
+    // Total number of VGPRs is actually a combination of AGPR and VGPR
+    // depending on architecture - and some alignment constraints
+    int32_t getTotalNumVGPRs(const GCNSubtarget &ST, int32_t NumAGPR,
+                             int32_t NumVGPR) const;
     int32_t getTotalNumVGPRs(const GCNSubtarget &ST) const;
   };
 
-  AMDGPUResourceUsageAnalysis() : CallGraphSCCPass(ID) {}
+  AMDGPUResourceUsageAnalysis() : ModulePass(ID) {}
 
-  bool runOnSCC(CallGraphSCC &SCC) override;
+  bool doInitialization(Module &M) override {
+    CallGraphResourceInfo.clear();
+    return ModulePass::doInitialization(M);
+  }
+
+  bool runOnModule(Module &M) override;
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<MachineModuleInfoWrapperPass>();
@@ -57,7 +65,10 @@ public:
   }
 
   const SIFunctionResourceInfo &getResourceInfo(const Function *F) const {
-    return CallGraphResourceInfo.find(F)->getSecond();
+    auto Info = CallGraphResourceInfo.find(F);
+    assert(Info != CallGraphResourceInfo.end() &&
+           "Failed to find resource info for function");
+    return Info->getSecond();
   }
 
 private:

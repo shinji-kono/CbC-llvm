@@ -1,32 +1,5 @@
 add_libc_testsuite(libc_math_unittests)
 
-function(add_fp_unittest name)
-  cmake_parse_arguments(
-    "MATH_UNITTEST"
-    "NEED_MPFR" # Optional arguments
-    "" # Single value arguments
-    "" # Multi-value arguments
-    ${ARGN}
-  )
-
-  if(MATH_UNITTEST_NEED_MPFR)
-    if(NOT LIBC_TESTS_CAN_USE_MPFR)
-      message("WARNING: Math test ${name} will be skipped as MPFR library is not available.")
-      return()
-    endif()
-  endif()
-
-  add_libc_unittest(${name} ${MATH_UNITTEST_UNPARSED_ARGUMENTS})
-  get_fq_target_name(${name} fq_target_name)
-  if (NOT TARGET ${fq_target_name})
-    return()
-  endif()
-  if(MATH_UNITTEST_NEED_MPFR)
-    target_link_libraries(${fq_target_name} PRIVATE libcMPFRWrapper -lmpfr -lgmp)
-  endif()
-  target_link_libraries(${fq_target_name} PRIVATE LibcFPTestHelpers)
-endfunction(add_fp_unittest)
-
 add_fp_unittest(
   cosf_test
   NEED_MPFR
@@ -38,9 +11,10 @@ add_fp_unittest(
     sdcomp26094.h
   DEPENDS
     libc.include.errno
+    libc.src.errno.errno
     libc.src.math.cosf
-    libc.utils.CPP.standalone_cpp
-    libc.utils.FPUtil.fputil
+    libc.src.__support.CPP.array
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -52,7 +26,7 @@ add_fp_unittest(
     cos_test.cpp
   DEPENDS
     libc.src.math.cos
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -66,9 +40,10 @@ add_fp_unittest(
     sdcomp26094.h
   DEPENDS
     libc.include.errno
+    libc.src.errno.errno
     libc.src.math.sinf
-    libc.utils.CPP.standalone_cpp
-    libc.utils.FPUtil.fputil
+    libc.src.__support.CPP.array
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -80,7 +55,7 @@ add_fp_unittest(
     sin_test.cpp
   DEPENDS
     libc.src.math.sin
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -94,9 +69,27 @@ add_fp_unittest(
     sdcomp26094.h
   DEPENDS
     libc.include.errno
+    libc.src.errno.errno
     libc.src.math.sincosf
-    libc.utils.CPP.standalone_cpp
-    libc.utils.FPUtil.fputil
+    libc.src.__support.CPP.array
+    libc.src.__support.FPUtil.fp_bits
+)
+
+add_fp_unittest(
+  tanf_test
+  NEED_MPFR
+  SUITE
+    libc_math_unittests
+  SRCS
+    tanf_test.cpp
+  HDRS
+    sdcomp26094.h
+  DEPENDS
+    libc.include.errno
+    libc.src.errno.errno
+    libc.src.math.tanf
+    libc.src.__support.CPP.array
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -111,7 +104,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.fabs
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -126,7 +119,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.fabsf
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -141,7 +134,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.fabsl
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -156,7 +149,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.trunc
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -171,7 +164,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.truncf
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -186,7 +179,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.truncl
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -201,7 +194,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.ceil
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -216,7 +209,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.ceilf
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -231,7 +224,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.ceill
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -246,7 +239,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.floor
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -261,7 +254,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.floorf
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -276,7 +269,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.floorl
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -291,7 +284,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.round
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -306,7 +299,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.roundf
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -321,7 +314,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.roundl
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -336,12 +329,12 @@ add_fp_unittest(
   DEPENDS
     libc.include.errno
     libc.include.math
-    libc.src.errno.__errno_location
+    libc.src.errno.errno
     libc.src.fenv.feclearexcept
     libc.src.fenv.feraiseexcept
     libc.src.fenv.fetestexcept
     libc.src.math.lround
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -356,12 +349,12 @@ add_fp_unittest(
   DEPENDS
     libc.include.errno
     libc.include.math
-    libc.src.errno.__errno_location
+    libc.src.errno.errno
     libc.src.fenv.feclearexcept
     libc.src.fenv.feraiseexcept
     libc.src.fenv.fetestexcept
     libc.src.math.lroundf
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -376,12 +369,12 @@ add_fp_unittest(
   DEPENDS
     libc.include.errno
     libc.include.math
-    libc.src.errno.__errno_location
+    libc.src.errno.errno
     libc.src.fenv.feclearexcept
     libc.src.fenv.feraiseexcept
     libc.src.fenv.fetestexcept
     libc.src.math.lroundl
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -396,12 +389,12 @@ add_fp_unittest(
   DEPENDS
     libc.include.errno
     libc.include.math
-    libc.src.errno.__errno_location
+    libc.src.errno.errno
     libc.src.fenv.feclearexcept
     libc.src.fenv.feraiseexcept
     libc.src.fenv.fetestexcept
     libc.src.math.llround
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -416,12 +409,12 @@ add_fp_unittest(
   DEPENDS
     libc.include.errno
     libc.include.math
-    libc.src.errno.__errno_location
+    libc.src.errno.errno
     libc.src.fenv.feclearexcept
     libc.src.fenv.feraiseexcept
     libc.src.fenv.fetestexcept
     libc.src.math.llroundf
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -436,12 +429,12 @@ add_fp_unittest(
   DEPENDS
     libc.include.errno
     libc.include.math
-    libc.src.errno.__errno_location
+    libc.src.errno.errno
     libc.src.fenv.feclearexcept
     libc.src.fenv.feraiseexcept
     libc.src.fenv.fetestexcept
     libc.src.math.llroundl
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -456,7 +449,8 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.rint
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fenv_impl
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -471,7 +465,8 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.rintf
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fenv_impl
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -486,7 +481,8 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.rintl
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fenv_impl
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -501,7 +497,8 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.lrint
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fenv_impl
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -516,7 +513,8 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.lrintf
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fenv_impl
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -531,7 +529,8 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.lrintl
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fenv_impl
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -546,7 +545,8 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.llrint
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fenv_impl
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -561,7 +561,8 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.llrintf
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fenv_impl
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -576,7 +577,8 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.llrintl
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fenv_impl
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -588,9 +590,10 @@ add_fp_unittest(
     expf_test.cpp
   DEPENDS
     libc.include.errno
+    libc.src.errno.errno
     libc.include.math
     libc.src.math.expf
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -602,9 +605,25 @@ add_fp_unittest(
     exp2f_test.cpp
   DEPENDS
     libc.include.errno
+    libc.src.errno.errno
     libc.include.math
     libc.src.math.exp2f
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
+)
+
+add_fp_unittest(
+  exp10f_test
+  NEED_MPFR
+  SUITE
+    libc_math_unittests
+  SRCS
+    exp10f_test.cpp
+  DEPENDS
+    libc.include.errno
+    libc.src.errno.errno
+    libc.include.math
+    libc.src.math.exp10f
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -618,7 +637,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.copysign
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -632,7 +651,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.copysignf
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -646,7 +665,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.copysignl
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -661,7 +680,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.frexp
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.basic_operations
 )
 
 add_fp_unittest(
@@ -676,7 +695,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.frexpf
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.basic_operations
 )
 
 add_fp_unittest(
@@ -691,7 +710,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.frexpl
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.basic_operations
 )
 
 add_fp_unittest(
@@ -705,7 +724,8 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.ilogb
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
+    libc.src.__support.FPUtil.manipulation_functions
 )
 
 add_fp_unittest(
@@ -719,7 +739,8 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.ilogbf
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
+    libc.src.__support.FPUtil.manipulation_functions
 )
 
 add_fp_unittest(
@@ -733,7 +754,8 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.ilogbl
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
+    libc.src.__support.FPUtil.manipulation_functions
 )
 
 add_fp_unittest(
@@ -747,7 +769,8 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.ldexp
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
+    libc.src.__support.FPUtil.normal_float
 )
 
 add_fp_unittest(
@@ -761,7 +784,8 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.ldexpf
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
+    libc.src.__support.FPUtil.normal_float
 )
 
 add_fp_unittest(
@@ -775,7 +799,8 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.ldexpl
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
+    libc.src.__support.FPUtil.normal_float
 )
 
 add_fp_unittest(
@@ -787,7 +812,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.logb
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.manipulation_functions
 )
 
 add_fp_unittest(
@@ -799,7 +824,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.logbf
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.manipulation_functions
 )
 
 add_fp_unittest(
@@ -813,7 +838,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.logbl
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.manipulation_functions
 )
 
 add_fp_unittest(
@@ -827,7 +852,8 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.modf
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.basic_operations
+    libc.src.__support.FPUtil.nearest_integer_operations
 )
 
 add_fp_unittest(
@@ -841,7 +867,8 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.modff
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.basic_operations
+    libc.src.__support.FPUtil.nearest_integer_operations
 )
 
 add_fp_unittest(
@@ -855,7 +882,8 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.modfl
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.basic_operations
+    libc.src.__support.FPUtil.nearest_integer_operations
 )
 
 add_fp_unittest(
@@ -869,7 +897,8 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.fdimf
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.basic_operations
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -883,7 +912,8 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.fdim
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.basic_operations
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -897,7 +927,8 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.fdiml
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.basic_operations
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -911,7 +942,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.fminf
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -925,7 +956,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.fmin
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -939,7 +970,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.fminl
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -953,7 +984,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.fmaxf
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -967,7 +998,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.fmax
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -981,7 +1012,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.fmaxl
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -994,7 +1025,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.sqrtf
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -1007,29 +1038,66 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.sqrt
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
-# The quad precision test for sqrt against MPFR currently suffers
-# from insufficient precision in MPFR calculations leading to
-# https://hal.archives-ouvertes.fr/hal-01091186/document. We will
-# renable after fixing the precision issue.
-if(${LIBC_TARGET_ARCHITECTURE_IS_X86})
-  add_fp_unittest(
-    sqrtl_test
-    NEED_MPFR
-    SUITE
-      libc_math_unittests
-    SRCS
-      sqrtl_test.cpp
-    DEPENDS
-      libc.include.math
-      libc.src.math.sqrtl
-      libc.utils.FPUtil.fputil
-  )
-else()
-  message(STATUS "Skipping sqrtl_test")
-endif()
+add_fp_unittest(
+  sqrtl_test
+  NEED_MPFR
+  SUITE
+    libc_math_unittests
+  SRCS
+    sqrtl_test.cpp
+  DEPENDS
+    libc.include.math
+    libc.src.math.sqrtl
+    libc.src.__support.FPUtil.fp_bits
+)
+
+add_fp_unittest(
+  generic_sqrtf_test
+  NEED_MPFR
+  SUITE
+    libc_math_unittests
+  SRCS
+    generic_sqrtf_test.cpp
+  DEPENDS
+    libc.src.math.sqrtf
+    libc.src.__support.FPUtil.fp_bits
+    libc.src.__support.FPUtil.generic.sqrt
+  COMPILE_OPTIONS
+    -O3
+)
+
+add_fp_unittest(
+  generic_sqrt_test
+  NEED_MPFR
+  SUITE
+    libc_math_unittests
+  SRCS
+    generic_sqrt_test.cpp
+  DEPENDS
+    libc.src.math.sqrt
+    libc.src.__support.FPUtil.fp_bits
+    libc.src.__support.FPUtil.generic.sqrt
+  COMPILE_OPTIONS
+    -O3
+)
+
+add_fp_unittest(
+  generic_sqrtl_test
+  NEED_MPFR
+  SUITE
+    libc_math_unittests
+  SRCS
+    generic_sqrtl_test.cpp
+  DEPENDS
+    libc.src.math.sqrtl
+    libc.src.__support.FPUtil.fp_bits
+    libc.src.__support.FPUtil.generic.sqrt
+  COMPILE_OPTIONS
+    -O3
+)
 
 add_fp_unittest(
   remquof_test
@@ -1043,7 +1111,8 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.remquof
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.basic_operations
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -1058,7 +1127,8 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.remquo
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.basic_operations
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -1073,7 +1143,8 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.remquol
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.basic_operations
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -1086,7 +1157,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.hypotf
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -1099,7 +1170,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.hypot
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -1113,7 +1184,8 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.nextafter
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.basic_operations
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -1127,7 +1199,8 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.nextafterf
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.basic_operations
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -1141,9 +1214,12 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.nextafterl
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.basic_operations
+    libc.src.__support.FPUtil.fp_bits
 )
 
+# TODO(lntue): The current implementation of fputil::general::fma<float> is only
+# correctly rounded for the default rounding mode round-to-nearest tie-to-even.
 add_fp_unittest(
   fmaf_test
   NEED_MPFR
@@ -1154,7 +1230,9 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.fmaf
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
+  FLAGS
+    FMA_OPT__ONLY
 )
 
 add_fp_unittest(
@@ -1167,7 +1245,7 @@ add_fp_unittest(
   DEPENDS
     libc.include.math
     libc.src.math.fma
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -1179,7 +1257,7 @@ add_fp_unittest(
     tan_test.cpp
   DEPENDS
     libc.src.math.tan
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
 )
 
 add_fp_unittest(
@@ -1191,9 +1269,269 @@ add_fp_unittest(
     expm1f_test.cpp
   DEPENDS
     libc.include.errno
+    libc.src.errno.errno
     libc.include.math
     libc.src.math.expm1f
-    libc.utils.FPUtil.fputil
+    libc.src.__support.FPUtil.fp_bits
+)
+
+add_fp_unittest(
+  mod_k_pi_test
+  NEED_MPFR
+  SUITE
+    libc-long-running-tests
+  SRCS
+    mod_k_pi_test.cpp
+  DEPENDS
+    libc.src.math.generic.dp_trig
+    libc.src.__support.FPUtil.fp_bits
+)
+
+add_fp_unittest(
+  logf_test
+  NEED_MPFR
+  SUITE
+    libc_math_unittests
+  SRCS
+    logf_test.cpp
+  DEPENDS
+    libc.include.errno
+    libc.src.errno.errno
+    libc.include.math
+    libc.src.math.logf
+    libc.src.__support.FPUtil.fp_bits
+)
+
+add_fp_unittest(
+  log2f_test
+  NEED_MPFR
+  SUITE
+    libc_math_unittests
+  SRCS
+    log2f_test.cpp
+  DEPENDS
+    libc.include.errno
+    libc.src.errno.errno
+    libc.include.math
+    libc.src.math.log2f
+    libc.src.__support.FPUtil.fp_bits
+)
+
+add_fp_unittest(
+  log10f_test
+  NEED_MPFR
+  SUITE
+    libc_math_unittests
+  SRCS
+    log10f_test.cpp
+  DEPENDS
+    libc.include.errno
+    libc.src.errno.errno
+    libc.include.math
+    libc.src.math.log10f
+    libc.src.__support.FPUtil.fp_bits
+)
+
+add_fp_unittest(
+  log1pf_test
+  NEED_MPFR
+  SUITE
+    libc_math_unittests
+  SRCS
+    log1pf_test.cpp
+  DEPENDS
+    libc.include.errno
+    libc.src.errno.errno
+    libc.include.math
+    libc.src.math.log1pf
+    libc.src.__support.FPUtil.fp_bits
+)
+
+add_fp_unittest(
+  fmodf_test
+  SUITE
+    libc_math_unittests
+  SRCS
+    fmodf_test.cpp
+  HDRS
+    FModTest.h
+  DEPENDS
+    libc.include.math
+    libc.src.math.fmodf
+    libc.src.__support.FPUtil.basic_operations
+    libc.src.__support.FPUtil.nearest_integer_operations
+)
+
+add_fp_unittest(
+  fmod_test
+  SUITE
+    libc_math_unittests
+  SRCS
+    fmod_test.cpp
+  HDRS
+    FModTest.h
+  DEPENDS
+    libc.include.math
+    libc.src.math.fmod
+    libc.src.__support.FPUtil.basic_operations
+    libc.src.__support.FPUtil.nearest_integer_operations
+)
+
+add_fp_unittest(
+  explogxf_test
+  NEED_MPFR
+  SUITE
+    libc_math_unittests
+  HDRS
+    in_float_range_test_helper.h
+  SRCS
+    explogxf_test.cpp
+  DEPENDS
+    libc.include.math
+    libc.src.math.generic.explogxf
+    libc.src.__support.FPUtil.fp_bits
+)
+
+add_fp_unittest(
+  coshf_test
+  NEED_MPFR
+  SUITE
+    libc_math_unittests
+  SRCS
+    coshf_test.cpp
+  HDRS
+    sdcomp26094.h
+  DEPENDS
+    libc.include.errno
+    libc.src.errno.errno
+    libc.src.math.coshf
+    libc.src.__support.CPP.array
+    libc.src.__support.FPUtil.fp_bits
+)
+
+add_fp_unittest(
+  sinhf_test
+  NEED_MPFR
+  SUITE
+    libc_math_unittests
+  SRCS
+    sinhf_test.cpp
+  HDRS
+    sdcomp26094.h
+  DEPENDS
+    libc.include.errno
+    libc.src.errno.errno
+    libc.src.math.sinhf
+    libc.src.__support.CPP.array
+    libc.src.__support.FPUtil.fp_bits
+)
+
+add_fp_unittest(
+  tanhf_test
+  NEED_MPFR
+  SUITE
+    libc_math_unittests
+  SRCS
+    tanhf_test.cpp
+  DEPENDS
+    libc.src.math.tanhf
+    libc.src.__support.FPUtil.fp_bits
+)
+
+add_fp_unittest(
+  atanhf_test
+  NEED_MPFR
+  SUITE
+    libc_math_unittests
+  SRCS
+    atanhf_test.cpp
+  DEPENDS
+    libc.include.errno
+    libc.src.errno.errno
+    libc.src.math.atanhf
+    libc.src.__support.FPUtil.fp_bits
+)
+
+add_fp_unittest(
+  asinf_test
+  NEED_MPFR
+  SUITE
+    libc_math_unittests
+  SRCS
+    asinf_test.cpp
+  DEPENDS
+    libc.include.errno
+    libc.src.errno.errno
+    libc.src.math.asinf
+    libc.src.__support.FPUtil.fp_bits
+)
+
+add_fp_unittest(
+  asin_test
+  NEED_MPFR
+  SUITE
+    libc_math_unittests
+  SRCS
+    asin_test.cpp
+  DEPENDS
+    libc.include.errno
+    libc.src.errno.errno
+    libc.src.math.asin
+)
+
+add_fp_unittest(
+  acosf_test
+  NEED_MPFR
+  SUITE
+    libc_math_unittests
+  SRCS
+    acosf_test.cpp
+  DEPENDS
+    libc.include.errno
+    libc.src.errno.errno
+    libc.src.math.acosf
+    libc.src.__support.FPUtil.fp_bits
+)
+
+add_fp_unittest(
+  atanf_test
+  NEED_MPFR
+  SUITE
+    libc_math_unittests
+  SRCS
+    atanf_test.cpp
+  DEPENDS
+    libc.include.errno
+    libc.src.errno.errno
+    libc.src.math.atanf
+    libc.src.__support.FPUtil.fp_bits
+)
+
+add_fp_unittest(
+  inv_trigf_utils_test
+  NEED_MPFR
+  SUITE
+    libc_math_unittests
+  HDRS
+    in_float_range_test_helper.h
+  SRCS
+    inv_trigf_utils_test.cpp
+  DEPENDS
+    libc.src.math.generic.inv_trigf_utils
+    libc.src.__support.FPUtil.fp_bits
+)
+
+add_fp_unittest(
+  pow_test
+  NEED_MPFR
+  SUITE
+    libc_math_unittests
+  SRCS
+    pow_test.cpp
+  DEPENDS
+  libc.include.errno
+  libc.src.errno.errno
+  libc.src.math.pow
 )
 
 add_subdirectory(generic)

@@ -14,12 +14,11 @@
 #include "llvm/ADT/FoldingSet.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/Analysis/Loads.h"
-#include "llvm/Analysis/MemoryLocation.h"
 #include "llvm/CodeGen/MIRFormatter.h"
-#include "llvm/CodeGen/MIRPrinter.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineJumpTableInfo.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
+#include "llvm/CodeGen/StableHashing.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
 #include "llvm/CodeGen/TargetRegisterInfo.h"
 #include "llvm/Config/llvm-config.h"
@@ -47,6 +46,7 @@ static const MachineFunction *getMFIfAvailable(const MachineOperand &MO) {
         return MF;
   return nullptr;
 }
+
 static MachineFunction *getMFIfAvailable(MachineOperand &MO) {
   return const_cast<MachineFunction *>(
       getMFIfAvailable(const_cast<const MachineOperand &>(MO)));
@@ -250,6 +250,11 @@ void MachineOperand::ChangeToRegister(Register Reg, bool isDef, bool isImp,
   if (RegInfo && WasReg)
     RegInfo->removeRegOperandFromUseList(this);
 
+  // Ensure debug instructions set debug flag on register uses.
+  const MachineInstr *MI = getParent();
+  if (!isDef && MI && MI->isDebugInstr())
+    isDebug = true;
+
   // Change this to a register and set the reg#.
   assert(!(isDead && !isDef) && "Dead flag on non-def");
   assert(!(isKill && isDef) && "Kill flag on def");
@@ -320,10 +325,8 @@ bool MachineOperand::isIdenticalTo(const MachineOperand &Other) const {
       return true;
 
     if (const MachineFunction *MF = getMFIfAvailable(*this)) {
-      // Calculate the size of the RegMask
       const TargetRegisterInfo *TRI = MF->getSubtarget().getRegisterInfo();
-      unsigned RegMaskSize = (TRI->getNumRegs() + 31) / 32;
-
+      unsigned RegMaskSize = MachineOperand::getRegMaskSize(TRI->getNumRegs());
       // Deep compare of the two RegMasks
       return std::equal(RegMask, RegMask + RegMaskSize, OtherRegMask);
     }
@@ -379,8 +382,20 @@ hash_code llvm::hash_value(const MachineOperand &MO) {
     return hash_combine(MO.getType(), MO.getTargetFlags(), MO.getBlockAddress(),
                         MO.getOffset());
   case MachineOperand::MO_RegisterMask:
-  case MachineOperand::MO_RegisterLiveOut:
-    return hash_combine(MO.getType(), MO.getTargetFlags(), MO.getRegMask());
+  case MachineOperand::MO_RegisterLiveOut: {
+    if (const MachineFunction *MF = getMFIfAvailable(MO)) {
+      const TargetRegisterInfo *TRI = MF->getSubtarget().getRegisterInfo();
+      unsigned RegMaskSize = MachineOperand::getRegMaskSize(TRI->getNumRegs());
+      const uint32_t *RegMask = MO.getRegMask();
+      std::vector<stable_hash> RegMaskHashes(RegMask, RegMask + RegMaskSize);
+      return hash_combine(MO.getType(), MO.getTargetFlags(),
+                          stable_hash_combine_array(RegMaskHashes.data(),
+                                                    RegMaskHashes.size()));
+    }
+
+    assert(0 && "MachineOperand not associated with any MachineFunction");
+    return hash_combine(MO.getType(), MO.getTargetFlags());
+  }
   case MachineOperand::MO_Metadata:
     return hash_combine(MO.getType(), MO.getTargetFlags(), MO.getMetadata());
   case MachineOperand::MO_MCSymbol:
@@ -516,7 +531,7 @@ static void printFrameIndex(raw_ostream& OS, int FrameIndex, bool IsFixed,
 void MachineOperand::printSubRegIdx(raw_ostream &OS, uint64_t Index,
                                     const TargetRegisterInfo *TRI) {
   OS << "%subreg.";
-  if (TRI)
+  if (TRI && Index != 0 && Index < TRI->getNumSubRegIndices())
     OS << TRI->getSubRegIndexName(Index);
   else
     OS << Index;
@@ -1066,7 +1081,9 @@ void MachineMemOperand::refineAlignment(const MachineMemOperand *MMO) {
   // The Value and Offset may differ due to CSE. But the flags and size
   // should be the same.
   assert(MMO->getFlags() == getFlags() && "Flags mismatch!");
-  assert(MMO->getSize() == getSize() && "Size mismatch!");
+  assert((MMO->getSize() == ~UINT64_C(0) || getSize() == ~UINT64_C(0) ||
+          MMO->getSize() == getSize()) &&
+         "Size mismatch!");
 
   if (MMO->getBaseAlign() >= getBaseAlign()) {
     // Update the alignment value.
@@ -1097,15 +1114,24 @@ void MachineMemOperand::print(raw_ostream &OS, ModuleSlotTracker &MST,
     OS << "dereferenceable ";
   if (isInvariant())
     OS << "invariant ";
-  if (getFlags() & MachineMemOperand::MOTargetFlag1)
-    OS << '"' << getTargetMMOFlagName(*TII, MachineMemOperand::MOTargetFlag1)
-       << "\" ";
-  if (getFlags() & MachineMemOperand::MOTargetFlag2)
-    OS << '"' << getTargetMMOFlagName(*TII, MachineMemOperand::MOTargetFlag2)
-       << "\" ";
-  if (getFlags() & MachineMemOperand::MOTargetFlag3)
-    OS << '"' << getTargetMMOFlagName(*TII, MachineMemOperand::MOTargetFlag3)
-       << "\" ";
+  if (TII) {
+    if (getFlags() & MachineMemOperand::MOTargetFlag1)
+      OS << '"' << getTargetMMOFlagName(*TII, MachineMemOperand::MOTargetFlag1)
+         << "\" ";
+    if (getFlags() & MachineMemOperand::MOTargetFlag2)
+      OS << '"' << getTargetMMOFlagName(*TII, MachineMemOperand::MOTargetFlag2)
+         << "\" ";
+    if (getFlags() & MachineMemOperand::MOTargetFlag3)
+      OS << '"' << getTargetMMOFlagName(*TII, MachineMemOperand::MOTargetFlag3)
+         << "\" ";
+  } else {
+    if (getFlags() & MachineMemOperand::MOTargetFlag1)
+      OS << "\"MOTargetFlag1\" ";
+    if (getFlags() & MachineMemOperand::MOTargetFlag2)
+      OS << "\"MOTargetFlag2\" ";
+    if (getFlags() & MachineMemOperand::MOTargetFlag3)
+      OS << "\"MOTargetFlag3\" ";
+  }
 
   assert((isLoad() || isStore()) &&
          "machine memory operand must be a load or store (or both)");
@@ -1180,7 +1206,7 @@ void MachineMemOperand::print(raw_ostream &OS, ModuleSlotTracker &MST,
        << "unknown-address";
   }
   MachineOperand::printOperandOffset(OS, getOffset());
-  if (getAlign() != getSize())
+  if (getSize() > 0 && getAlign() != getSize())
     OS << ", align " << getAlign().value();
   if (getAlign() != getBaseAlign())
     OS << ", basealign " << getBaseAlign().value();

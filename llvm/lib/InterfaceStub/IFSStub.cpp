@@ -8,7 +8,7 @@
 
 #include "llvm/InterfaceStub/IFSStub.h"
 #include "llvm/BinaryFormat/ELF.h"
-#include "llvm/Support/Error.h"
+#include "llvm/Support/ErrorHandling.h"
 
 using namespace llvm;
 using namespace llvm::ifs;
@@ -29,7 +29,7 @@ IFSStub::IFSStub(IFSStub &&Stub) {
   Symbols = std::move(Stub.Symbols);
 }
 
-IFSStubTriple::IFSStubTriple(IFSStubTriple const &Stub) {
+IFSStubTriple::IFSStubTriple(IFSStubTriple const &Stub) : IFSStub() {
   IfsVersion = Stub.IfsVersion;
   Target = Stub.Target;
   SoName = Stub.SoName;
@@ -64,8 +64,8 @@ uint8_t ifs::convertIFSBitWidthToELF(IFSBitWidthType BitWidth) {
     return ELF::ELFCLASS32;
   case IFSBitWidthType::IFS64:
     return ELF::ELFCLASS64;
-  case IFSBitWidthType::Unknown:
-    llvm_unreachable("unkown bitwidth");
+  default:
+    llvm_unreachable("unknown bitwidth");
   }
 }
 
@@ -75,7 +75,7 @@ uint8_t ifs::convertIFSEndiannessToELF(IFSEndiannessType Endianness) {
     return ELF::ELFDATA2LSB;
   case IFSEndiannessType::Big:
     return ELF::ELFDATA2MSB;
-  case IFSEndiannessType::Unknown:
+  default:
     llvm_unreachable("unknown endianness");
   }
 }

@@ -1,4 +1,4 @@
-//===-- M68kTargetMachine.cpp - M68k target machine ---------*- C++ -*-===//
+//===-- M68kTargetMachine.cpp - M68k Target Machine -------------*- C++ -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -24,8 +24,8 @@
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/InitializePasses.h"
+#include "llvm/MC/TargetRegistry.h"
 #include "llvm/PassRegistry.h"
-#include "llvm/Support/TargetRegistry.h"
 #include <memory>
 
 using namespace llvm;
@@ -49,10 +49,14 @@ std::string computeDataLayout(const Triple &TT, StringRef CPU,
   // FIXME how to wire it with the used object format?
   Ret += "-m:e";
 
-  // M68k pointers are always 32 bit wide even for 16 bit cpus
-  Ret += "-p:32:32";
+  // M68k pointers are always 32 bit wide even for 16-bit CPUs.
+  // The ABI only specifies 16-bit alignment.
+  // On at least the 68020+ with a 32-bit bus, there is a performance benefit
+  // to having 32-bit alignment.
+  Ret += "-p:32:16:32";
 
-  // M68k requires i8 to align on 2 byte boundry
+  // Bytes do not require special alignment, words are word aligned and
+  // long words are word aligned at minimum.
   Ret += "-i8:8:8-i16:16:16-i32:16:32";
 
   // FIXME no floats at the moment
@@ -68,9 +72,8 @@ std::string computeDataLayout(const Triple &TT, StringRef CPU,
 Reloc::Model getEffectiveRelocModel(const Triple &TT,
                                     Optional<Reloc::Model> RM) {
   // If not defined we default to static
-  if (!RM.hasValue()) {
+  if (!RM.has_value())
     return Reloc::Static;
-  }
 
   return *RM;
 }
@@ -84,7 +87,7 @@ CodeModel::Model getEffectiveCodeModel(Optional<CodeModel::Model> CM,
   } else if (CM == CodeModel::Kernel) {
     llvm_unreachable("Kernel code model is not implemented yet");
   }
-  return CM.getValue();
+  return CM.value();
 }
 } // end anonymous namespace
 

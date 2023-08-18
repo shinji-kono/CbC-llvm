@@ -1,5 +1,4 @@
-! RUN: %S/test_errors.sh %s %t %flang_fc1
-! REQUIRES: shell
+! RUN: %python %S/test_errors.py %s %flang_fc1
 ! Resolve generic based on number of arguments
 subroutine s1
   interface f
@@ -70,11 +69,13 @@ subroutine s4a
 end
 subroutine s4b
   use m4
-  !ERROR: Actual argument associated with INTENT(OUT) dummy argument 'x=' must be definable
+  !ERROR: Actual argument associated with INTENT(OUT) dummy argument 'x=' is not definable
+  !BECAUSE: 'x' is protected in this scope
   call s(x)
 end
 pure subroutine s4c
   use m4
-  !ERROR: Actual argument associated with INTENT(OUT) dummy argument 'x=' must be definable
+  !ERROR: Actual argument associated with INTENT(OUT) dummy argument 'x=' is not definable
+  !BECAUSE: 'y' may not be defined in pure subprogram 's4c' because it is USE-associated
   call s(y)
 end

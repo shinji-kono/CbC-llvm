@@ -1,4 +1,4 @@
-; RUN: opt -objc-arc-contract -S < %s | FileCheck %s
+; RUN: opt -passes=objc-arc-contract -S < %s | FileCheck %s
 
 target datalayout = "e-p:64:64:64"
 
@@ -254,6 +254,25 @@ define i8* @test13(i8* %a0, i8* %a1, i8** %addr, i8* %new) {
   %retained = call i8* @llvm.objc.retain(i8* %new)
   store i8* %retained, i8** %addr, align 8
   ret i8* %retained
+}
+
+; Cannot form a storeStrong call because it's unsafe to move the release call to
+; the store.
+
+; CHECK-LABEL: define void @test14(
+; CHECK: %[[V0:.*]] = load i8*, i8** %a
+; CHECK: %[[V1:.*]] = call i8* @llvm.objc.retain(i8* %p)
+; CHECK: store i8* %[[V1]], i8** %a
+; CHECK: %[[V2:.*]] = call i8* @llvm.objc.retain(i8* %[[V0]])
+; CHECK: call void @llvm.objc.release(i8* %[[V2]])
+
+define void @test14(i8** %a, i8* %p) {
+  %v0 = load i8*, i8** %a, align 8
+  %v1 = call i8* @llvm.objc.retain(i8* %p)
+  store i8* %p, i8** %a, align 8
+  %v2  = call i8* @llvm.objc.retain(i8* %v0)
+  call void @llvm.objc.release(i8* %v0)
+  ret void
 }
 
 !0 = !{}

@@ -12,14 +12,14 @@ namespace llvm {
 namespace orc {
 
 Expected<std::unique_ptr<EPCDynamicLibrarySearchGenerator>>
-EPCDynamicLibrarySearchGenerator::Load(ExecutorProcessControl &EPC,
+EPCDynamicLibrarySearchGenerator::Load(ExecutionSession &ES,
                                        const char *LibraryPath,
                                        SymbolPredicate Allow) {
-  auto Handle = EPC.loadDylib(LibraryPath);
+  auto Handle = ES.getExecutorProcessControl().loadDylib(LibraryPath);
   if (!Handle)
     return Handle.takeError();
 
-  return std::make_unique<EPCDynamicLibrarySearchGenerator>(EPC, *Handle,
+  return std::make_unique<EPCDynamicLibrarySearchGenerator>(ES, *Handle,
                                                             std::move(Allow));
 }
 
@@ -54,7 +54,7 @@ Error EPCDynamicLibrarySearchGenerator::tryToGenerate(
   for (auto &KV : LookupSymbols) {
     if (*ResultI)
       NewSymbols[KV.first] =
-          JITEvaluatedSymbol(*ResultI, JITSymbolFlags::Exported);
+          JITEvaluatedSymbol(ResultI->getValue(), JITSymbolFlags::Exported);
     ++ResultI;
   }
 

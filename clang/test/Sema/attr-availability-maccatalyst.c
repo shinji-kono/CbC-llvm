@@ -12,8 +12,8 @@
 void f0(int) __attribute__((availability(maccatalyst,introduced=2.0,deprecated=9.1))); // expected-note {{'f0' has been explicitly marked deprecated here}}
 void f1(int) __attribute__((availability(maccatalyst,introduced=2.1)));
 void f2(int) __attribute__((availability(macCatalyst,introduced=2.0,deprecated=9.0))); // expected-note {{'f2' has been explicitly marked deprecated here}}
-void f3(int) __attribute__((availability(macosx,introduced=10.1),  availability(maccatalyst,introduced=3.0, obsoleted=9.0))); // expected-note {{'f3' has been explicitly marked unavailable here}}
-void f32(int) __attribute__((availability(macosx,introduced=10.1,deprecated=10.3,obsoleted=10.5),  availability(maccatalyst,introduced=3.0, obsoleted=9.0))); // expected-note {{'f32' has been explicitly marked unavailable here}}
+void f3(int) __attribute__((availability(maccatalyst,introduced=3.0, obsoleted=9.0))); // expected-note {{'f3' has been explicitly marked unavailable here}}
+void f32(int) __attribute__((availability(maccatalyst,introduced=3.0, obsoleted=9.0))); // expected-note {{'f32' has been explicitly marked unavailable here}}
 
 
 void f5(int) __attribute__((availability(maccatalyst,introduced=2.0))) __attribute__((availability(maccatalyst,deprecated=9.0))); // expected-note {{'f5' has been explicitly marked deprecated here}}
@@ -32,7 +32,7 @@ void f9(void) // expected-note {{'f9' has been explicitly marked unavailable her
 __attribute__((availability(maccatalyst,unavailable)))
 __attribute__((availability(ios,introduced=2.0)));
 
-void test() {
+void test(void) {
   f0(0);
 #ifndef APPEXT
   // expected-warning@-2 {{'f0' is deprecated: first deprecated in macCatalyst 9.1}}
@@ -96,7 +96,7 @@ __attribute__((availability(ios,unavailable)));
 void f103(void)
 __attribute__((availability(maccatalyst,introduced=3.0)));
 
-void dontInheritObsoletedDeprecated() {
+void dontInheritObsoletedDeprecated(void) {
   f100();
   f101();
   f102();
@@ -109,7 +109,7 @@ void f202(void) __attribute__((availability(ios,introduced=2.0, deprecated=5.0))
 void f203(void) __attribute__((availability(ios,introduced=2.0, obsoleted=5.0))); // expected-note {{here}}
 void f204(void) __attribute__((availability(ios,unavailable))); // expected-note {{here}}
 
-void inheritIosAvailability() {
+void inheritIosAvailability(void) {
   f202();
 #ifndef APPEXT
 // expected-warning@-2 {{'f202' is deprecated: first deprecated in macCatalyst 13.1}}

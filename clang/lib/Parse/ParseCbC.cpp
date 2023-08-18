@@ -94,39 +94,6 @@ namespace ExternalSpace { // from ParseExpr.cpp , ParseStmt.cpp
     };
 }
 
-
-/// goto with environment with out logjmp
-/// basic idea is prepare struct containes pointer to return value variable and stack pointer
-/// 
-/// int main() {
-///    struct __CbC_return {
-///      int* i;
-///      void* sp;
-//       void* fp;
-///    } ret; 
-//     int i;
-///    if (0) {
-//  _CBC_RETURN: 
-//        %fp = ret.fp;
-//        %rsp = ret.sp;
-//        i = *(ret.i); //?
-//        return i;
-//     }
-///    ret.i = &i;
-///    ret.sp = %rsp;
-//     ret.fp = %rfp;
-///    __code c(int i,void* env) = _CBC_RETURN;
-///    goto f(c, &ret);
-/// }
-/// 
-/// __code ret(int, void* env) {
-//      sp = env;
-//      %rax = 1;
-//      jmp _CBC_RETURN;
-/// }
-/// 
-///
-
 /// Prepare__retForGotoWithTheEnvExpr - Prepare __CbC_return, code segment for returning and some necessary statements.
 /// It is called when the parser find __return and statements are put into complex statement.
 /// 
@@ -137,11 +104,7 @@ namespace ExternalSpace { // from ParseExpr.cpp , ParseStmt.cpp
 ///           __CbC_return = code_segment_for_return;
 ///           __CbC_return;
 ///         });
-///   code segment:
-///         __code ret(return_type retval, void *env){
-///           *(return_type)((struct __CbC_env *)(env))->ret_p = retval;
-///             longjmp((int*)(((struct __CbC_env *)env)->env),1);
-///         }
+
 ExprResult Parser::Prepare__retForGotoWithTheEnvExpr(){
 
   if (isVoidFunction()) { // error check : function type is void or not.
@@ -162,6 +125,7 @@ ExprResult Parser::Prepare__retForGotoWithTheEnvExpr(){
   PrettyStackTraceLoc CrashInfo(PP.getSourceManager(),Loc,"in compound statement ('{}')");
   StmtVector CompoundStmts; 
 
+  ConsumeAnyToken(); // eat the '__return'.
   // create code segment for return to C's function
   CreateRetCS(retcsII);
     
@@ -181,9 +145,20 @@ ExprResult Parser::Prepare__retForGotoWithTheEnvExpr(){
     CompoundStmts.push_back(innerRes.get());
   Sema::CompoundScopeRAII CompoundScope(Actions);
   CompoundStmtRes = Actions.ActOnCompoundStmt(Loc,Loc,CompoundStmts,true);
-  ConsumeAnyToken(); // eat the '__return'.
 
   return Actions.ActOnStmtExpr(getCurScope(),Loc, CompoundStmtRes.get(), Loc);
+}
+
+#include "clang/Lex/Preprocessor.h"
+#include "clang/Lex/Token.h"
+
+bool Parser::isBuiltinSetjmpDefined() {
+  IdentifierInfo *II = PP.getIdentifierInfo("__builtin_setjmp");
+  if (II != nullptr) {
+    int BuiltinID = II->getBuiltinID();
+    return (BuiltinID == Builtin::BI__builtin_setjmp);
+  }
+  return false;
 }
 
 /// Prepare__envForGotoWithTheEnvExpr - Prepare __CbC_environment, struct __CbC_env and some necessary statements.
@@ -194,6 +169,7 @@ ExprResult Parser::Prepare__retForGotoWithTheEnvExpr(){
 ///         ({
 ///           volatile struct __CbC_env __CbC_environment;
 ///           jmp_buf env_buf;  --> int env_buf[64];
+///           extern int setjmp(jmp_buf);
 ///           return_type retval;
 ///           __CbC_environment.ret_p = &retval;
 ///           __CbC_environment.env = &env_buf;
@@ -207,6 +183,10 @@ ExprResult Parser::Prepare__retForGotoWithTheEnvExpr(){
 ///           void *ret_p,*env;
 ///         }
 
+//
+// Compile from String
+//   make sure to CosumeToken() before call this function.
+//
 void Parser::CompileFromString(const char *str, StmtVector &CompoundStmts){
   SourceLocation Loc = Tok.getLocation();
   Token TokSave = Tok;
@@ -259,7 +239,11 @@ ExprResult Parser::Prepare__envForGotoWithTheEnvExpr(){
     CompoundStmts.push_back(innerRes.get());
 
   ConsumeAnyToken(); // eat the '__environment'.
-  CompileFromString("int env_buf[64];",CompoundStmts); // 4*64 is enough for every arch right now
+  if (isBuiltinSetjmpDefined()) {
+      CompileFromString("int env_buf[64];",CompoundStmts); // 4*64 is enough for every arch right now
+  } else {
+      CompileFromString("int env_buf[64];extern int setjmp(void *);",CompoundStmts); 
+  }
 
   // __CbC_environment.ret_p = &retval;
   innerRes = CreateAssignmentStmt(__CbC_envII, retvalII, true, true, ret_pII);
@@ -288,7 +272,7 @@ ExprResult Parser::Prepare__envForGotoWithTheEnvExpr(){
   ParsedType CastTy;
   DeclSpec void_DS(AttrFactory);
   setTST(&void_DS, DeclSpec::TST_void);
-  Declarator DeclaratorInfo(void_DS, DeclaratorContext::TypeName);
+  Declarator DeclaratorInfo(void_DS, ParsedAttributesView::none(), DeclaratorContext::TypeName);
   DeclSpec star_DS(AttrFactory);
   star_DS.Finish(Actions, Actions.getASTContext().getPrintingPolicy());
   DeclaratorInfo.ExtendWithDeclSpec(star_DS);
@@ -366,7 +350,9 @@ StmtResult Parser::CreateDeclStmt(IdentifierInfo *II, bool isRetCS, bool copyTyp
   DSp = &DS;
 
   setTST(&DS, valueType, Name, TQ);
-  ParsingDeclarator D(*this, DS, static_cast<DeclaratorContext>(DeclaratorContext::Block));
+  ParsedAttributes LocalAttrs(AttrFactory);
+  // LocalAttrs.takeAllFrom(Attrs);
+  ParsingDeclarator D(*this, DS, LocalAttrs, static_cast<DeclaratorContext>(DeclaratorContext::Block));
   D.SetIdentifier(II, Loc);
     
   if (array) {
@@ -520,7 +506,11 @@ StmtResult Parser::CreateSjForContinuationWithTheEnv(){
   StmtResult InitStmt;
   Sema::ConditionResult Cond;
 
-  CondExp = LookupNameAndBuildExpr(CreateIdentifierInfo("__builtin_setjmp", Loc));
+  if (isBuiltinSetjmpDefined()) {
+      CondExp = LookupNameAndBuildExpr(CreateIdentifierInfo("__builtin_setjmp", Loc));
+  } else {
+      CondExp = LookupNameAndBuildExpr(CreateIdentifierInfo("setjmp", Loc));
+  }
   ExprVector ArgExprs;
   ExprResult __envExprRes = CondExp.get();
 
@@ -549,7 +539,7 @@ StmtResult Parser::CreateSjForContinuationWithTheEnv(){
   InnerScope.Exit();
   IfScope.Exit();
   StmtResult ElseStmt;
-  IfRes = Actions.ActOnIfStmt(Loc, false, Loc, CondExp.get(), Cond, Loc, ThenStmt.get(),Loc, ElseStmt.get());
+  IfRes = Actions.ActOnIfStmt(Loc, IfStatementKind::Ordinary, Loc, CondExp.get(), Cond, Loc, ThenStmt.get(),Loc, ElseStmt.get());
   return IfRes;
 }
 
@@ -609,7 +599,7 @@ void Parser::Create__CbC_envStruct(SourceLocation Loc, AccessSpecifier AS) {
   DeclResult TagOrTempResult = true;
   bool Owned = false;
   bool IsDependent = false;
-  ParsedAttributesWithRange attrs(AttrFactory);
+  ParsedAttributes attrs(AttrFactory);
   MultiTemplateParamsArg TParams;
       
   TagOrTempResult = Actions.ActOnTag(getCurScope(), TagType, Sema::TUK_Definition, Loc,
@@ -641,7 +631,9 @@ Decl* Parser::Create__CbC_envBody(Decl* TagDecl, DeclSpec::TST T, SourceLocation
   ParsingDeclSpec PDS(*this);
   setTST(&PDS, T);
   SourceLocation CommaLoc;
-  ParsingFieldDeclarator DeclaratorInfo(*this, PDS);
+  ParsedAttributes LocalAttrs(AttrFactory);
+  // LocalAttrs.takeAllFrom(Attrs);
+  ParsingFieldDeclarator DeclaratorInfo(*this, PDS, LocalAttrs);
   DeclaratorInfo.D.setCommaLoc(CommaLoc);
   DeclaratorInfo.D.SetRangeEnd(Loc);
   DeclSpec DS(AttrFactory);
@@ -695,7 +687,7 @@ IdentifierInfo* Parser::CreateUniqueIdentifierInfo(const char* Name, SourceLocat
 /// CreateRetCS - Create code segment which is used for continuation with the environment.
 ///   create these codes:
 ///         __code ret(return_type retval, void *env){
-///           *(return_type)((struct CbC_environment *)(env))->ret_p = n;
+///           *(return_type)((struct CbC_environment *)(env))->ret_p = retval;
 ///             longjmp((void*)(((struct __CbC_environment *)env)->env),1);
 ///         }
 void Parser::CreateRetCS(IdentifierInfo *csName){
@@ -717,7 +709,9 @@ void Parser::CreateRetCS(IdentifierInfo *csName){
   SourceLocation Loc = Tok.getLocation();
   ParsingDeclSpec PDS(*this);
   setTST(&PDS, DeclSpec::TST___code);
-  ParsingDeclarator D(*this, PDS, static_cast<DeclaratorContext>(DeclaratorContext::File));
+  ParsedAttributes LocalAttrs(AttrFactory);
+  // LocalAttrs.takeAllFrom(Attrs);
+  ParsingDeclarator D(*this, PDS, LocalAttrs, static_cast<DeclaratorContext>(DeclaratorContext::File));
   D.SetIdentifier(csName, Loc);
   ParseScope PrototypeScope(this,Scope::FunctionPrototypeScope|Scope::DeclScope|Scope::FunctionDeclarationScope);
   bool IsAmbiguous = false;
@@ -773,10 +767,15 @@ void Parser::CreateRetCS(IdentifierInfo *csName){
   ExprVector ArgExprs;
   CommaLocsTy CommaLocs;
   DeclSpec envDS(AttrFactory);
+
+  if (! isBuiltinSetjmpDefined()) {
+      CompileFromString("extern void longjmp(void *,int);",FnStmts); 
+  }
+
   IdentifierInfo *structName = CreateIdentifierInfo(__CBC_STRUCT_NAME, Loc);
   setTST(&envDS, DeclSpec::TST_struct, structName);
 
-  Declarator envDInfo(envDS, DeclaratorContext::TypeName);
+  Declarator envDInfo(envDS, ParsedAttributesView::none(), DeclaratorContext::TypeName);
   envDInfo.SetRangeEnd(Loc);
   DeclSpec starDS(AttrFactory);
   starDS.Finish(Actions, Policy);
@@ -818,12 +817,16 @@ void Parser::CreateRetCS(IdentifierInfo *csName){
     FnStmts.push_back(innerR.get());
 
   ExprResult ljExpr,ljLHS;
-  ljExpr = IIToExpr(CreateIdentifierInfo("__builtin_longjmp",  Loc), tok::l_paren);
+  if (isBuiltinSetjmpDefined()) {
+      ljExpr = IIToExpr(CreateIdentifierInfo("__builtin_longjmp",  Loc), tok::l_paren);
+  } else {
+      ljExpr = IIToExpr(CreateIdentifierInfo("longjmp",  Loc), tok::l_paren);
+  }
   ExprVector ljArgExprs;
   DeclSpec ljDS(AttrFactory);
   setTST(&ljDS, DeclSpec::TST_struct, structName);
 
-  Declarator ljD(ljDS, DeclaratorContext::TypeName);
+  Declarator ljD(ljDS, ParsedAttributesView::none(), DeclaratorContext::TypeName);
   ljD.SetRangeEnd(Loc);
   DeclSpec starDS2(AttrFactory);
   starDS2.Finish(Actions, Policy);
@@ -920,7 +923,7 @@ ParmVarDecl* Parser::CreateParam(IdentifierInfo *II, int pointerNum, DeclSpec::T
   SourceLocation Loc = Tok.getLocation();
   DeclSpec DS(AttrFactory);
   setTST(&DS, T);
-  Declarator ParamDeclarator(DS, DeclaratorContext::Prototype);
+  Declarator ParamDeclarator(DS, ParsedAttributesView::none(), DeclaratorContext::Prototype);
   ParamDeclarator.SetIdentifier(II, Loc);
   for(int i = 0;i<pointerNum; i++){
     DeclSpec pointerDS(AttrFactory);
@@ -955,7 +958,7 @@ void Parser::setTST(DeclSpec *DS, DeclSpec::TST T, IdentifierInfo* Name, DeclSpe
   }
 
   if (T == DeclSpec::TST_struct) {
-    ParsedAttributesWithRange attrs(AttrFactory);
+    ParsedAttributes attrs(AttrFactory);
     DeclResult TagOrTempResult = true;
     bool Owned = false;
     bool IsDependent = false;
@@ -1023,7 +1026,7 @@ bool Parser::isVoidFunction(){
 ///       jump-statement:
 /// [CbC]   'goto' codeSegment ';'
 ///
-StmtResult Parser::ParseCbCGotoStatement(ParsedAttributesWithRange &Attrs,StmtVector &Stmts) {
+StmtResult Parser::ParseCbCGotoStatement(ParsedAttributes &Attrs,StmtVector &Stmts) {
   assert(Tok.is(tok::kw_goto) && "Not a goto stmt!");
   StmtVector CompoundedStmts;
 
@@ -1073,74 +1076,6 @@ bool Parser::SearchCodeSegmentDeclaration(std::string Name){
     ConsumeToken();
   }
   return false;
-}
-
-bool Parser::NeedPrototypeDeclaration(Token IITok){
-#if 0
-  // if we allo unprototyped code segment
-  LookupResult LR(Actions, IITok.getIdentifierInfo(), IITok.getLocation(), Actions.LookupOrdinaryName);
-  CXXScopeSpec SS;
-  Actions.LookupParsedName(LR, getCurScope(), &SS, !(Actions.getCurMethodDecl()));
-
-  return (LR.getResultKind() == LookupResult::NotFound);
-#endif
-  return false;
-}
-
-/// CreatePrototypeDeclaration - Create prototype declaration by it's definition.
-void Parser::CreatePrototypeDeclaration(){
-  // move to the top level scope
-  Scope *SavedScope = getCurScope();
-  DeclContext *SavedContext = Actions.CurContext;
-  sema::FunctionScopeInfo *SavedFSI = Actions.FunctionScopes.pop_back_val();
-  Actions.CurContext = static_cast<DeclContext *>(Actions.Context.getTranslationUnitDecl());
-  Scope *TopScope = getCurScope();
-  while(TopScope->getParent() != NULL)
-    TopScope = TopScope->getParent();
-  Actions.CurScope = TopScope;
-  
-  Token Next = NextToken();
-  Token CachedTokens[3] = {Next, PP.LookAhead(1)};
-  Token SavedToken = Tok;
-  Token IITok = Tok.is(tok::identifier) ? Tok : Next;
-  PP.ClearCache();
-  PP.ProtoParsing = true;
-  ProtoParsing = true;
-  
-  const DirectoryLookup *CurDir = nullptr;
-  FileID FID = PP.getSourceManager().createFileID(PP.getCurrentFileLexer()->getFileEntry(), IITok.getLocation(), SrcMgr::C_User);
-  PP.EnterSourceFile(FID,CurDir,IITok.getLocation());
-  ConsumeToken();
-
-  if(SearchCodeSegmentDeclaration(IITok.getIdentifierInfo()->getName().str())){
-    DeclGroupPtrTy ProtoDecl;
-    ParseTopLevelDecl(ProtoDecl);
-    // add declaration to AST.
-    if(ProtoDecl)
-      (&Actions.getASTConsumer())->HandleTopLevelDecl(ProtoDecl.get());
-    // File Closing
-    Token T;
-    PP.HandleEndOfFile(T, false);
-
-    // recover tokens.
-    Tok = SavedToken;
-    PP.RestoreTokens(CachedTokens, 2);
-    
-  }
-  else {
-    // recover tokens.
-    CachedTokens[2] = Tok;
-    Tok = SavedToken;
-    PP.RestoreTokens(CachedTokens, 3);
-  }
-
-  // move to the previous scope.
-  Actions.CurScope = SavedScope;
-  Actions.CurContext = SavedContext;
-  Actions.FunctionScopes.push_back(SavedFSI);
-  
-  ProtoParsing = false;
-  PP.ProtoParsing = false;
 }
 
 static bool HasFlagsSet(Parser::SkipUntilFlags L, Parser::SkipUntilFlags R) {

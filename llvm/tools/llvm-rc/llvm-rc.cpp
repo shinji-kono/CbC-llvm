@@ -27,7 +27,6 @@
 #include "llvm/Support/FileUtilities.h"
 #include "llvm/Support/Host.h"
 #include "llvm/Support/InitLLVM.h"
-#include "llvm/Support/ManagedStatic.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/PrettyStackTrace.h"
@@ -60,7 +59,7 @@ enum ID {
 #include "Opts.inc"
 #undef PREFIX
 
-static const opt::OptTable::Info InfoTable[] = {
+const opt::OptTable::Info InfoTable[] = {
 #define OPTION(PREFIX, NAME, ID, KIND, GROUP, ALIAS, ALIASARGS, FLAGS, PARAM,  \
                HELPTEXT, METAVAR, VALUES)                                      \
   {                                                                            \
@@ -90,7 +89,7 @@ enum Windres_ID {
 #include "WindresOpts.inc"
 #undef PREFIX
 
-static const opt::OptTable::Info WindresInfoTable[] = {
+const opt::OptTable::Info WindresInfoTable[] = {
 #define OPTION(PREFIX, NAME, ID, KIND, GROUP, ALIAS, ALIASARGS, FLAGS, PARAM,  \
                HELPTEXT, METAVAR, VALUES)                                      \
   {                                                                            \
@@ -111,7 +110,7 @@ static ExitOnError ExitOnErr;
 static FileRemover TempPreprocFile;
 static FileRemover TempResFile;
 
-LLVM_ATTRIBUTE_NORETURN static void fatalError(const Twine &Message) {
+[[noreturn]] static void fatalError(const Twine &Message) {
   errs() << Message << "\n";
   exit(1);
 }
@@ -124,13 +123,14 @@ std::string createTempFile(const Twine &Prefix, StringRef Suffix) {
   return static_cast<std::string>(FileName);
 }
 
-ErrorOr<std::string> findClang(const char *Argv0) {
+ErrorOr<std::string> findClang(const char *Argv0, StringRef Triple) {
   StringRef Parent = llvm::sys::path::parent_path(Argv0);
   ErrorOr<std::string> Path = std::error_code();
+  std::string TargetClang = (Triple + "-clang").str();
   if (!Parent.empty()) {
     // First look for the tool with all potential names in the specific
     // directory of Argv0, if known
-    for (const auto *Name : {"clang", "clang-cl"}) {
+    for (const auto *Name : {TargetClang.c_str(), "clang", "clang-cl"}) {
       Path = sys::findProgramByName(Name, Parent);
       if (Path)
         return Path;
@@ -219,7 +219,7 @@ bool preprocess(StringRef Src, StringRef Dst, const RcOptions &Opts,
   if (Opts.PrintCmdAndExit) {
     Clang = "clang";
   } else {
-    ErrorOr<std::string> ClangOrErr = findClang(Argv0);
+    ErrorOr<std::string> ClangOrErr = findClang(Argv0, Opts.Triple);
     if (ClangOrErr) {
       Clang = *ClangOrErr;
     } else {
@@ -476,13 +476,14 @@ RcOptions parseWindresOptions(ArrayRef<const char *> ArgsArr,
   Opts.Params.CodePage = CpWin1252; // Different default
   if (InputArgs.hasArg(WINDRES_codepage)) {
     if (InputArgs.getLastArgValue(WINDRES_codepage)
-            .getAsInteger(10, Opts.Params.CodePage))
+            .getAsInteger(0, Opts.Params.CodePage))
       fatalError("Invalid code page: " +
                  InputArgs.getLastArgValue(WINDRES_codepage));
   }
   if (InputArgs.hasArg(WINDRES_language)) {
-    if (InputArgs.getLastArgValue(WINDRES_language)
-            .getAsInteger(16, Opts.LangId))
+    StringRef Val = InputArgs.getLastArgValue(WINDRES_language);
+    Val.consume_front_insensitive("0x");
+    if (Val.getAsInteger(16, Opts.LangId))
       fatalError("Invalid language id: " +
                  InputArgs.getLastArgValue(WINDRES_language));
   }
@@ -565,7 +566,9 @@ RcOptions parseRcOptions(ArrayRef<const char *> ArgsArr,
   }
   Opts.AppendNull = InputArgs.hasArg(OPT_add_null);
   if (InputArgs.hasArg(OPT_lang_id)) {
-    if (InputArgs.getLastArgValue(OPT_lang_id).getAsInteger(16, Opts.LangId))
+    StringRef Val = InputArgs.getLastArgValue(OPT_lang_id);
+    Val.consume_front_insensitive("0x");
+    if (Val.getAsInteger(16, Opts.LangId))
       fatalError("Invalid language id: " +
                  InputArgs.getLastArgValue(OPT_lang_id));
   }
@@ -721,12 +724,12 @@ void doCvtres(std::string Src, std::string Dest, std::string TargetTriple) {
 
 } // anonymous namespace
 
-int main(int Argc, const char **Argv) {
+int llvm_rc_main(int Argc, char **Argv) {
   InitLLVM X(Argc, Argv);
   ExitOnErr.setBanner("llvm-rc: ");
 
-  const char **DashDash = std::find_if(
-      Argv + 1, Argv + Argc, [](StringRef Str) { return Str == "--"; });
+  char **DashDash = std::find_if(Argv + 1, Argv + Argc,
+                                 [](StringRef Str) { return Str == "--"; });
   ArrayRef<const char *> ArgsArr = makeArrayRef(Argv + 1, DashDash);
   ArrayRef<const char *> FileArgsArr;
   if (DashDash != Argv + Argc)

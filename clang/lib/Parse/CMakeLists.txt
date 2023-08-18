@@ -12,6 +12,7 @@ add_clang_library(clangParse
   ParseDeclCXX.cpp
   ParseExpr.cpp
   ParseExprCXX.cpp
+  ParseHLSL.cpp
   ParseInit.cpp
   ParseObjc.cpp
   ParseOpenMP.cpp
@@ -20,6 +21,7 @@ add_clang_library(clangParse
   ParseStmtAsm.cpp
   ParseTemplate.cpp
   ParseTentative.cpp
+  ParseCbC.cpp
   Parser.cpp
 
   LINK_LIBS

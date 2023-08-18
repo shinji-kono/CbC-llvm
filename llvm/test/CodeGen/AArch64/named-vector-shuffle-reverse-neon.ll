@@ -30,6 +30,24 @@ define <8 x i16> @reverse_v8i16(<8 x i16> %a) #0 {
   ret <8 x i16> %res
 }
 
+define <2 x i16> @reverse_v2i16(<2 x i16> %a) #0 {
+; CHECK-LABEL: reverse_v2i16:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    rev64 v0.2s, v0.2s
+; CHECK-NEXT:    ret
+  %res = call <2 x i16> @llvm.experimental.vector.reverse.v2i16(<2 x i16> %a)
+  ret <2 x i16> %res
+}
+
+define <2 x i32> @reverse_v2i32(<2 x i32> %a) #0 {
+; CHECK-LABEL: reverse_v2i32:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    rev64 v0.2s, v0.2s
+; CHECK-NEXT:    ret
+  %res = call <2 x i32> @llvm.experimental.vector.reverse.v2i32(<2 x i32> %a)
+  ret <2 x i32> %res
+}
+
 define <4 x i32> @reverse_v4i32(<4 x i32> %a) #0 {
 ; CHECK-LABEL: reverse_v4i32:
 ; CHECK:       // %bb.0:
@@ -60,6 +78,15 @@ define <8 x half> @reverse_v8f16(<8 x half> %a) #0 {
 
   %res = call <8 x half> @llvm.experimental.vector.reverse.v8f16(<8 x half> %a)
   ret <8 x half> %res
+}
+
+define <2 x float> @reverse_v2f32(<2 x float> %a) #0 {
+; CHECK-LABEL: reverse_v2f32:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    rev64 v0.2s, v0.2s
+; CHECK-NEXT:    ret
+  %res = call <2 x float> @llvm.experimental.vector.reverse.v2f32(<2 x float> %a)
+  ret <2 x float> %res
 }
 
 define <4 x float> @reverse_v4f32(<4 x float> %a) #0 {
@@ -106,7 +133,7 @@ define <8 x i32> @reverse_v8i32(<8 x i32> %a) #0 {
 ;
 ; CHECK-FASTISEL-LABEL: reverse_v8i32:
 ; CHECK-FASTISEL:       // %bb.0:
-; CHECK-FASTISEL-NEXT:    sub sp, sp, #16 // =16
+; CHECK-FASTISEL-NEXT:    sub sp, sp, #16
 ; CHECK-FASTISEL-NEXT:    str q1, [sp] // 16-byte Folded Spill
 ; CHECK-FASTISEL-NEXT:    mov v1.16b, v0.16b
 ; CHECK-FASTISEL-NEXT:    ldr q0, [sp] // 16-byte Folded Reload
@@ -114,7 +141,7 @@ define <8 x i32> @reverse_v8i32(<8 x i32> %a) #0 {
 ; CHECK-FASTISEL-NEXT:    ext v0.16b, v0.16b, v0.16b, #8
 ; CHECK-FASTISEL-NEXT:    rev64 v1.4s, v1.4s
 ; CHECK-FASTISEL-NEXT:    ext v1.16b, v1.16b, v1.16b, #8
-; CHECK-FASTISEL-NEXT:    add sp, sp, #16 // =16
+; CHECK-FASTISEL-NEXT:    add sp, sp, #16
 ; CHECK-FASTISEL-NEXT:    ret
 
   %res = call <8 x i32> @llvm.experimental.vector.reverse.v8i32(<8 x i32> %a)
@@ -137,7 +164,7 @@ define <16 x float> @reverse_v16f32(<16 x float> %a) #0 {
 ;
 ; CHECK-FASTISEL-LABEL: reverse_v16f32:
 ; CHECK-FASTISEL:       // %bb.0:
-; CHECK-FASTISEL-NEXT:    sub sp, sp, #32 // =32
+; CHECK-FASTISEL-NEXT:    sub sp, sp, #32
 ; CHECK-FASTISEL-NEXT:    str q3, [sp, #16] // 16-byte Folded Spill
 ; CHECK-FASTISEL-NEXT:    str q2, [sp] // 16-byte Folded Spill
 ; CHECK-FASTISEL-NEXT:    mov v2.16b, v1.16b
@@ -152,7 +179,7 @@ define <16 x float> @reverse_v16f32(<16 x float> %a) #0 {
 ; CHECK-FASTISEL-NEXT:    ext v2.16b, v2.16b, v2.16b, #8
 ; CHECK-FASTISEL-NEXT:    rev64 v3.4s, v3.4s
 ; CHECK-FASTISEL-NEXT:    ext v3.16b, v3.16b, v3.16b, #8
-; CHECK-FASTISEL-NEXT:    add sp, sp, #32 // =32
+; CHECK-FASTISEL-NEXT:    add sp, sp, #32
 ; CHECK-FASTISEL-NEXT:    ret
 
   %res = call <16 x float> @llvm.experimental.vector.reverse.v16f32(<16 x float> %a)
@@ -163,10 +190,13 @@ define <16 x float> @reverse_v16f32(<16 x float> %a) #0 {
 declare <2 x i8> @llvm.experimental.vector.reverse.v2i8(<2 x i8>)
 declare <16 x i8> @llvm.experimental.vector.reverse.v16i8(<16 x i8>)
 declare <8 x i16> @llvm.experimental.vector.reverse.v8i16(<8 x i16>)
+declare <2 x i16> @llvm.experimental.vector.reverse.v2i16(<2 x i16>)
+declare <2 x i32> @llvm.experimental.vector.reverse.v2i32(<2 x i32>)
 declare <4 x i32> @llvm.experimental.vector.reverse.v4i32(<4 x i32>)
 declare <8 x i32> @llvm.experimental.vector.reverse.v8i32(<8 x i32>)
 declare <2 x i64> @llvm.experimental.vector.reverse.v2i64(<2 x i64>)
 declare <8 x half> @llvm.experimental.vector.reverse.v8f16(<8 x half>)
+declare <2 x float> @llvm.experimental.vector.reverse.v2f32(<2 x float>)
 declare <4 x float> @llvm.experimental.vector.reverse.v4f32(<4 x float>)
 declare <16 x float> @llvm.experimental.vector.reverse.v16f32(<16 x float>)
 declare <2 x double> @llvm.experimental.vector.reverse.v2f64(<2 x double>)

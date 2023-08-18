@@ -22,7 +22,7 @@ TEST(LowLevelTypeTest, Scalar) {
   LLVMContext C;
   DataLayout DL("");
 
-  for (unsigned S : {1U, 17U, 32U, 64U, 0xfffffU}) {
+  for (unsigned S : {0U, 1U, 17U, 32U, 64U, 0xfffffU}) {
     const LLT Ty = LLT::scalar(S);
 
     // Test kind.
@@ -41,8 +41,10 @@ TEST(LowLevelTypeTest, Scalar) {
     EXPECT_FALSE(Ty != Ty);
 
     // Test Type->LLT conversion.
-    Type *IRTy = IntegerType::get(C, S);
-    EXPECT_EQ(Ty, getLLTForType(*IRTy, DL));
+    if (S != 0) {
+      Type *IRTy = IntegerType::get(C, S);
+      EXPECT_EQ(Ty, getLLTForType(*IRTy, DL));
+    }
   }
 }
 
@@ -50,7 +52,7 @@ TEST(LowLevelTypeTest, Vector) {
   LLVMContext C;
   DataLayout DL("");
 
-  for (unsigned S : {1U, 17U, 32U, 64U, 0xfffU}) {
+  for (unsigned S : {0U, 1U, 17U, 32U, 64U, 0xfffU}) {
     for (auto EC :
          {ElementCount::getFixed(2), ElementCount::getFixed(3),
           ElementCount::getFixed(4), ElementCount::getFixed(32),
@@ -94,9 +96,11 @@ TEST(LowLevelTypeTest, Vector) {
       EXPECT_NE(VTy, STy);
 
       // Test Type->LLT conversion.
-      Type *IRSTy = IntegerType::get(C, S);
-      Type *IRTy = VectorType::get(IRSTy, EC);
-      EXPECT_EQ(VTy, getLLTForType(*IRTy, DL));
+      if (S != 0) {
+        Type *IRSTy = IntegerType::get(C, S);
+        Type *IRTy = VectorType::get(IRSTy, EC);
+        EXPECT_EQ(VTy, getLLTForType(*IRTy, DL));
+      }
     }
   }
 }
@@ -315,4 +319,49 @@ TEST(LowLevelTypeTest, Divide) {
             LLT::fixed_vector(4, LLT::pointer(1, 64)).divide(2));
 }
 
+TEST(LowLevelTypeTest, MultiplyElements) {
+  // Basic scalar->vector cases
+  EXPECT_EQ(LLT::fixed_vector(2, 16), LLT::scalar(16).multiplyElements(2));
+  EXPECT_EQ(LLT::fixed_vector(3, 16), LLT::scalar(16).multiplyElements(3));
+  EXPECT_EQ(LLT::fixed_vector(4, 32), LLT::scalar(32).multiplyElements(4));
+  EXPECT_EQ(LLT::fixed_vector(4, 7), LLT::scalar(7).multiplyElements(4));
+
+  // Basic vector to vector cases
+  EXPECT_EQ(LLT::fixed_vector(4, 32),
+            LLT::fixed_vector(2, 32).multiplyElements(2));
+  EXPECT_EQ(LLT::fixed_vector(9, 32),
+            LLT::fixed_vector(3, 32).multiplyElements(3));
+
+  // Pointer to vector of pointers
+  EXPECT_EQ(LLT::fixed_vector(2, LLT::pointer(0, 32)),
+            LLT::pointer(0, 32).multiplyElements(2));
+  EXPECT_EQ(LLT::fixed_vector(3, LLT::pointer(1, 32)),
+            LLT::pointer(1, 32).multiplyElements(3));
+  EXPECT_EQ(LLT::fixed_vector(4, LLT::pointer(1, 64)),
+            LLT::pointer(1, 64).multiplyElements(4));
+
+  // Vector of pointers to vector of pointers
+  EXPECT_EQ(LLT::fixed_vector(8, LLT::pointer(1, 64)),
+            LLT::fixed_vector(2, LLT::pointer(1, 64)).multiplyElements(4));
+  EXPECT_EQ(LLT::fixed_vector(9, LLT::pointer(1, 32)),
+            LLT::fixed_vector(3, LLT::pointer(1, 32)).multiplyElements(3));
+
+  // Scalable vectors
+  EXPECT_EQ(LLT::scalable_vector(4, 16),
+            LLT::scalable_vector(2, 16).multiplyElements(2));
+  EXPECT_EQ(LLT::scalable_vector(6, 16),
+            LLT::scalable_vector(2, 16).multiplyElements(3));
+  EXPECT_EQ(LLT::scalable_vector(9, 16),
+            LLT::scalable_vector(3, 16).multiplyElements(3));
+  EXPECT_EQ(LLT::scalable_vector(4, 32),
+            LLT::scalable_vector(2, 32).multiplyElements(2));
+  EXPECT_EQ(LLT::scalable_vector(256, 32),
+            LLT::scalable_vector(8, 32).multiplyElements(32));
+
+  // Scalable vectors of pointers
+  EXPECT_EQ(LLT::scalable_vector(4, LLT::pointer(0, 32)),
+            LLT::scalable_vector(2, LLT::pointer(0, 32)).multiplyElements(2));
+  EXPECT_EQ(LLT::scalable_vector(32, LLT::pointer(1, 64)),
+            LLT::scalable_vector(8, LLT::pointer(1, 64)).multiplyElements(4));
+}
 }

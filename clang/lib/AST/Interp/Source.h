@@ -22,7 +22,7 @@ namespace interp {
 class Function;
 
 /// Pointer into the code segment.
-class CodePtr {
+class CodePtr final {
 public:
   CodePtr() : Ptr(nullptr) {}
 
@@ -43,9 +43,12 @@ public:
 
   bool operator!=(const CodePtr &RHS) const { return Ptr != RHS.Ptr; }
 
+  operator bool() const { return Ptr; }
+
   /// Reads data and advances the pointer.
-  template <typename T> T read() {
-    T Value = ReadHelper<T>(Ptr);
+  template <typename T> std::enable_if_t<!std::is_pointer<T>::value, T> read() {
+    using namespace llvm::support;
+    T Value = endian::read<T, endianness::native, 1>(Ptr);
     Ptr += sizeof(T);
     return Value;
   }
@@ -53,22 +56,6 @@ public:
 private:
   /// Constructor used by Function to generate pointers.
   CodePtr(const char *Ptr) : Ptr(Ptr) {}
-
-  /// Helper to decode a value or a pointer.
-  template <typename T>
-  static std::enable_if_t<!std::is_pointer<T>::value, T>
-  ReadHelper(const char *Ptr) {
-    using namespace llvm::support;
-    return endian::read<T, endianness::native, 1>(Ptr);
-  }
-
-  template <typename T>
-  static std::enable_if_t<std::is_pointer<T>::value, T>
-  ReadHelper(const char *Ptr) {
-    using namespace llvm::support;
-    auto Punned = endian::read<uintptr_t, endianness::native, 1>(Ptr);
-    return reinterpret_cast<T>(Punned);
-  }
 
 private:
   friend class Function;
@@ -78,7 +65,7 @@ private:
 };
 
 /// Describes the statement/declaration an opcode was generated from.
-class SourceInfo {
+class SourceInfo final {
 public:
   SourceInfo() {}
   SourceInfo(const Stmt *E) : Source(E) {}
@@ -104,12 +91,12 @@ public:
   virtual ~SourceMapper() {}
 
   /// Returns source information for a given PC in a function.
-  virtual SourceInfo getSource(Function *F, CodePtr PC) const = 0;
+  virtual SourceInfo getSource(const Function *F, CodePtr PC) const = 0;
 
   /// Returns the expression if an opcode belongs to one, null otherwise.
-  const Expr *getExpr(Function *F, CodePtr PC) const;
+  const Expr *getExpr(const Function *F, CodePtr PC) const;
   /// Returns the location from which an opcode originates.
-  SourceLocation getLocation(Function *F, CodePtr PC) const;
+  SourceLocation getLocation(const Function *F, CodePtr PC) const;
 };
 
 } // namespace interp

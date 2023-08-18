@@ -1,10 +1,9 @@
-; RUN: opt < %s -dfsan -dfsan-event-callbacks=true -S | FileCheck %s --check-prefixes=CHECK,EVENT_CALLBACKS
-; RUN: opt < %s -dfsan -dfsan-args-abi -S | FileCheck %s --check-prefixes=CHECK,ARGS_ABI
-; RUN: opt < %s -dfsan -S | FileCheck %s --check-prefixes=CHECK,FAST
-; RUN: opt < %s -dfsan -dfsan-combine-pointer-labels-on-load=false -S | FileCheck %s --check-prefixes=CHECK,NO_COMBINE_LOAD_PTR
-; RUN: opt < %s -dfsan -dfsan-combine-pointer-labels-on-store=true -S | FileCheck %s --check-prefixes=CHECK,COMBINE_STORE_PTR
-; RUN: opt < %s -dfsan -dfsan-track-select-control-flow=false -S | FileCheck %s --check-prefixes=CHECK,NO_SELECT_CONTROL
-; RUN: opt < %s -dfsan -dfsan-debug-nonzero-labels -S | FileCheck %s --check-prefixes=CHECK,DEBUG_NONZERO_LABELS
+; RUN: opt < %s -passes=dfsan -dfsan-event-callbacks=true -S | FileCheck %s --check-prefixes=CHECK,EVENT_CALLBACKS
+; RUN: opt < %s -passes=dfsan -S | FileCheck %s --check-prefixes=CHECK,FAST
+; RUN: opt < %s -passes=dfsan -dfsan-combine-pointer-labels-on-load=false -S | FileCheck %s --check-prefixes=CHECK,NO_COMBINE_LOAD_PTR
+; RUN: opt < %s -passes=dfsan -dfsan-combine-pointer-labels-on-store=true -S | FileCheck %s --check-prefixes=CHECK,COMBINE_STORE_PTR
+; RUN: opt < %s -passes=dfsan -dfsan-track-select-control-flow=false -S | FileCheck %s --check-prefixes=CHECK,NO_SELECT_CONTROL
+; RUN: opt < %s -passes=dfsan -dfsan-debug-nonzero-labels -S | FileCheck %s --check-prefixes=CHECK,DEBUG_NONZERO_LABELS
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v64:64:64-v128:128:128-a0:0:64-s0:64:64-f80:128:128-n8:16:32:64-S128"
 target triple = "x86_64-unknown-linux-gnu"
 
@@ -17,10 +16,6 @@ define {i8*, i32} @pass_struct({i8*, i32} %s) {
   ; NO_COMBINE_LOAD_PTR: @pass_struct.dfsan
   ; NO_COMBINE_LOAD_PTR: [[L:%.*]] = load { i[[#SBITS]], i[[#SBITS]] }, { i[[#SBITS]], i[[#SBITS]] }* bitcast ([[TLS_ARR]]* @__dfsan_arg_tls to { i[[#SBITS]], i[[#SBITS]] }*), align [[ALIGN:2]]
   ; NO_COMBINE_LOAD_PTR: store { i[[#SBITS]], i[[#SBITS]] } [[L]], { i[[#SBITS]], i[[#SBITS]] }* bitcast ([[TLS_ARR]]* @__dfsan_retval_tls to { i[[#SBITS]], i[[#SBITS]] }*), align [[ALIGN]]
-
-  ; ARGS_ABI: @pass_struct.dfsan
-  ; ARGS_ABI-SAME: ({ i8*, i32 } {{%.*}}, i[[#SBITS]] {{%.*}})
-  ; ARGS_ABI: ret { { i8*, i32 }, i[[#SBITS]] }
 
   ; DEBUG_NONZERO_LABELS: @pass_struct.dfsan
   ; DEBUG_NONZERO_LABELS: [[L:%.*]] = load { i[[#SBITS]], i[[#SBITS]] }, { i[[#SBITS]], i[[#SBITS]] }* bitcast ([[TLS_ARR]]* @__dfsan_arg_tls to { i[[#SBITS]], i[[#SBITS]] }*), align [[ALIGN:2]]
@@ -41,8 +36,6 @@ define %StructOfAggr @pass_struct_of_aggregate(%StructOfAggr %s) {
   ; NO_COMBINE_LOAD_PTR: %1 = load { i[[#SBITS]], [4 x i[[#SBITS]]], i[[#SBITS]], { i[[#SBITS]], i[[#SBITS]] } }, { i[[#SBITS]], [4 x i[[#SBITS]]], i[[#SBITS]], { i[[#SBITS]], i[[#SBITS]] } }* bitcast ([[TLS_ARR]]* @__dfsan_arg_tls to { i[[#SBITS]], [4 x i[[#SBITS]]], i[[#SBITS]], { i[[#SBITS]], i[[#SBITS]] } }*), align [[ALIGN:2]]
   ; NO_COMBINE_LOAD_PTR: store { i[[#SBITS]], [4 x i[[#SBITS]]], i[[#SBITS]], { i[[#SBITS]], i[[#SBITS]] } } %1, { i[[#SBITS]], [4 x i[[#SBITS]]], i[[#SBITS]], { i[[#SBITS]], i[[#SBITS]] } }* bitcast ([[TLS_ARR]]* @__dfsan_retval_tls to { i[[#SBITS]], [4 x i[[#SBITS]]], i[[#SBITS]], { i[[#SBITS]], i[[#SBITS]] } }*), align [[ALIGN]]
 
-  ; ARGS_ABI: @pass_struct_of_aggregate.dfsan
-  ; ARGS_ABI: ret { %StructOfAggr, i[[#SBITS]] }
   ret %StructOfAggr %s
 }
 

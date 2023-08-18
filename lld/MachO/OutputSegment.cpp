@@ -9,6 +9,7 @@
 #include "OutputSegment.h"
 #include "ConcatOutputSection.h"
 #include "InputSection.h"
+#include "Symbols.h"
 #include "SyntheticSections.h"
 
 #include "lld/Common/ErrorHandler.h"
@@ -41,6 +42,12 @@ static uint32_t maxProt(StringRef name) {
   assert(config->arch() != AK_i386 &&
          "TODO: i386 has different maxProt requirements");
   return initProt(name);
+}
+
+static uint32_t flags(StringRef name) {
+  // If we ever implement shared cache output support, SG_READ_ONLY should not
+  // be used for dylibs that can be placed in it.
+  return name == segment_names::dataConst ? (uint32_t)SG_READ_ONLY : 0;
 }
 
 size_t OutputSegment::numNonHiddenSections() const {
@@ -83,10 +90,11 @@ static int sectionOrder(OutputSection *osec) {
   // Sections are uniquely identified by their segment + section name.
   if (segname == segment_names::text) {
     return StringSwitch<int>(osec->name)
-        .Case(section_names::header, -4)
-        .Case(section_names::text, -3)
-        .Case(section_names::stubs, -2)
-        .Case(section_names::stubHelper, -1)
+        .Case(section_names::header, -5)
+        .Case(section_names::text, -4)
+        .Case(section_names::stubs, -3)
+        .Case(section_names::stubHelper, -2)
+        .Case(section_names::initOffsets, -1)
         .Case(section_names::unwindInfo, std::numeric_limits<int>::max() - 1)
         .Case(section_names::ehFrame, std::numeric_limits<int>::max())
         .Default(osec->inputOrder);
@@ -145,17 +153,36 @@ void OutputSegment::sortOutputSections() {
   llvm::stable_sort(sections, compareByOrder<OutputSection *>(sectionOrder));
 }
 
+void OutputSegment::assignAddressesToStartEndSymbols() {
+  for (Defined *d : segmentStartSymbols)
+    d->value = addr;
+  for (Defined *d : segmentEndSymbols)
+    d->value = addr + vmSize;
+}
+
 void macho::sortOutputSegments() {
-  // sort() instead of stable_sort() is fine because segmentOrder() is
-  // name-based and getOrCreateOutputSegment() makes there's only a single
-  // segment for every name.
-  llvm::sort(outputSegments, compareByOrder<OutputSegment *>(segmentOrder));
+  llvm::stable_sort(outputSegments,
+                    compareByOrder<OutputSegment *>(segmentOrder));
 }
 
 static DenseMap<StringRef, OutputSegment *> nameToOutputSegment;
 std::vector<OutputSegment *> macho::outputSegments;
 
+void macho::resetOutputSegments() {
+  outputSegments.clear();
+  nameToOutputSegment.clear();
+}
+
+static StringRef maybeRenameSegment(StringRef name) {
+  auto newName = config->segmentRenameMap.find(name);
+  if (newName != config->segmentRenameMap.end())
+    return newName->second;
+  return name;
+}
+
 OutputSegment *macho::getOrCreateOutputSegment(StringRef name) {
+  name = maybeRenameSegment(name);
+
   OutputSegment *&segRef = nameToOutputSegment[name];
   if (segRef)
     return segRef;
@@ -164,6 +191,7 @@ OutputSegment *macho::getOrCreateOutputSegment(StringRef name) {
   segRef->name = name;
   segRef->maxProt = maxProt(name);
   segRef->initProt = initProt(name);
+  segRef->flags = flags(name);
 
   outputSegments.push_back(segRef);
   return segRef;

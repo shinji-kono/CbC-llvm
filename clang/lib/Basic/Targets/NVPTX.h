@@ -42,7 +42,8 @@ static const unsigned NVPTXAddrSpaceMap[] = {
     0, // sycl_private
     0, // ptr32_sptr
     0, // ptr32_uptr
-    0  // ptr64
+    0, // ptr64
+    0, // hlsl_groupshared
 };
 
 /// The DWARF address class. Taken from
@@ -121,7 +122,7 @@ public:
 
   void fillValidCPUList(SmallVectorImpl<StringRef> &Values) const override {
     for (int i = static_cast<int>(CudaArch::SM_20);
-         i < static_cast<int>(CudaArch::LAST); ++i)
+         i < static_cast<int>(CudaArch::Generic); ++i)
       Values.emplace_back(CudaArchToString(static_cast<CudaArch>(i)));
   }
 
@@ -147,6 +148,10 @@ public:
     Opts["cl_khr_local_int32_extended_atomics"] = true;
   }
 
+  const llvm::omp::GV &getGridValue() const override {
+    return llvm::omp::NVPTXGridValues;
+  }
+
   /// \returns If a target requires an address within a target specific address
   /// space \p AddressSpace to be converted in order to be used, then return the
   /// corresponding target specific DWARF address space.
@@ -155,7 +160,7 @@ public:
   /// DWARF.
   Optional<unsigned>
   getDWARFAddressSpace(unsigned AddressSpace) const override {
-    if (AddressSpace >= llvm::array_lengthof(NVPTXDWARFAddrSpaceMap) ||
+    if (AddressSpace >= std::size(NVPTXDWARFAddrSpaceMap) ||
         NVPTXDWARFAddrSpaceMap[AddressSpace] < 0)
       return llvm::None;
     return NVPTXDWARFAddrSpaceMap[AddressSpace];
@@ -171,7 +176,9 @@ public:
     return CCCR_Warning;
   }
 
-  bool hasExtIntType() const override { return true; }
+  bool hasBitIntType() const override { return true; }
+  bool hasBFloat16Type() const override { return true; }
+  const char *getBFloat16Mangling() const override { return "u6__bf16"; };
 };
 } // namespace targets
 } // namespace clang

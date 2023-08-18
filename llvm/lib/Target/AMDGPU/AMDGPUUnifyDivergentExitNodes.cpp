@@ -211,8 +211,12 @@ bool AMDGPUUnifyDivergentExitNodes::runOnFunction(Function &F) {
       if (!isUniformlyReached(DA, *BB))
         ReturningBlocks.push_back(BB);
     } else if (isa<UnreachableInst>(BB->getTerminator())) {
-      if (!isUniformlyReached(DA, *BB))
-        UnreachableBlocks.push_back(BB);
+      // TODO: For now we unify UnreachableBlocks even though they are uniformly
+      // reachable. This is to workaround the limitation of structurizer, which
+      // can not handle multiple function exits. After structurizer is able to
+      // handle multiple function exits, we should only unify UnreachableBlocks
+      // that are not uniformly reachable.
+      UnreachableBlocks.push_back(BB);
     } else if (BranchInst *BI = dyn_cast<BranchInst>(BB->getTerminator())) {
 
       ConstantInt *BoolTrue = ConstantInt::getTrue(F.getContext());
@@ -232,7 +236,7 @@ bool AMDGPUUnifyDivergentExitNodes::runOnFunction(Function &F) {
         BranchInst::Create(LoopHeaderBB, DummyReturnBB, BoolTrue, BB);
         Updates.push_back({DominatorTree::Insert, BB, DummyReturnBB});
       } else { // Conditional branch.
-        SmallVector<BasicBlock *, 2> Successors(succ_begin(BB), succ_end(BB));
+        SmallVector<BasicBlock *, 2> Successors(successors(BB));
 
         // Create a new transition block to hold the conditional branch.
         BasicBlock *TransitionBB = BB->splitBasicBlock(BI, "TransitionBlock");
